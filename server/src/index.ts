@@ -32,6 +32,13 @@ interface ProductWithAssociations extends Model<InferAttributes<ProductWithAssoc
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+// Configure CORS
+app.use(cors({
+  origin: ['http://labrat-vm:3000', 'http://localhost:3000'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
 // Configure multer for file upload
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
@@ -51,7 +58,6 @@ if (!fs.existsSync('uploads')) {
 }
 
 // Middleware
-app.use(cors());
 app.use(express.json());
 
 // Routes

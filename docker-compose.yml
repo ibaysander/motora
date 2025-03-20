@@ -6,20 +6,23 @@ services:
       context: .
       dockerfile: Dockerfile
     ports:
-      - "3000:80"
+      - "0.0.0.0:3000:80"
     depends_on:
       - backend
     environment:
-      - VITE_API_URL=http://localhost:3001/api
+      - REACT_APP_API_URL=http://labrat-vm:3001/api
 
   backend:
     build:
       context: ./server
       dockerfile: Dockerfile
     ports:
-      - "3001:3001"
+      - "0.0.0.0:3001:3001"
     volumes:
-      - ./server/database.sqlite:/app/database.sqlite
+      - type: bind
+        source: ./server/database
+        target: /app/database
+        read_only: false
     environment:
       - NODE_ENV=development
       - PORT=3001 
