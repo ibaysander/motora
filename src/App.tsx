@@ -21,8 +21,14 @@ interface Product {
   note: string | null;
   currentStock: number;
   minThreshold: number;
-  category?: Category;
-  brand?: Brand;
+  Category?: {
+    id: number;
+    name: string;
+  };
+  Brand?: {
+    id: number;
+    name: string;
+  };
 }
 
 interface SortConfig {
@@ -371,12 +377,12 @@ export default function App() {
   const filteredProducts = products.filter(product => {
     const searchLower = searchQuery.toLowerCase();
     const matchesSearch = 
-      product.category?.name.toLowerCase().includes(searchLower) ||
-      product.brand?.name.toLowerCase().includes(searchLower) ||
+      product.Category?.name.toLowerCase().includes(searchLower) ||
+      product.Brand?.name.toLowerCase().includes(searchLower) ||
       (product.tipeMotor?.toLowerCase().includes(searchLower) ?? false);
     
     if (alphabeticalFilter) {
-      const firstLetter = product.category?.name.charAt(0).toUpperCase() || '';
+      const firstLetter = product.Category?.name.charAt(0).toUpperCase() || '';
       if (!matchesSearch || firstLetter !== alphabeticalFilter) return false;
     }
     
@@ -923,15 +929,15 @@ export default function App() {
                       <th className="px-6 py-4 text-left text-lg font-semibold">No</th>
                       <th 
                         className="px-6 py-4 text-left text-lg font-semibold cursor-pointer hover:bg-gray-200"
-                        onClick={() => requestSort('category.name', 'products')}
+                        onClick={() => requestSort('Category.name', 'products')}
                       >
-                        Category {getSortIcon('category.name', 'products')}
+                        Category {getSortIcon('Category.name', 'products')}
                       </th>
                       <th 
                         className="px-6 py-4 text-left text-lg font-semibold cursor-pointer hover:bg-gray-200"
-                        onClick={() => requestSort('brand.name', 'products')}
+                        onClick={() => requestSort('Brand.name', 'products')}
                       >
-                        Brand {getSortIcon('brand.name', 'products')}
+                        Brand {getSortIcon('Brand.name', 'products')}
                       </th>
                       <th 
                         className="px-6 py-4 text-left text-lg font-semibold cursor-pointer hover:bg-gray-200"
@@ -982,8 +988,8 @@ export default function App() {
                     {paginateData(sortData(filteredProducts, productSortConfig), productPagination).map((product, index) => (
                       <tr key={product.id} className={`border-t ${isDarkMode ? 'border-gray-700' : 'border-gray-200'} ${product.currentStock <= product.minThreshold ? isDarkMode ? 'bg-red-900/20' : 'bg-red-50' : ''}`}>
                         <td className="px-6 py-4 text-lg">{index + 1}</td>
-                        <td className="px-6 py-4 text-lg">{product.category?.name}</td>
-                        <td className="px-6 py-4 text-lg">{product.brand?.name}</td>
+                        <td className="px-6 py-4 text-lg">{product.Category?.name}</td>
+                        <td className="px-6 py-4 text-lg">{product.Brand?.name}</td>
                         <td className="px-6 py-4 text-lg">{product.tipeMotor}</td>
                         <td className="px-6 py-4 text-lg">{product.tipeSize}</td>
                         <td className={`px-6 py-4 text-lg font-semibold ${product.currentStock <= product.minThreshold ? 'text-red-500' : 'text-green-500'}`}>

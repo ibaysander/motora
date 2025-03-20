@@ -10,7 +10,8 @@ services:
     depends_on:
       - backend
     environment:
-      - REACT_APP_API_URL=http://labrat-vm:3001/api
+      - NODE_ENV=${NODE_ENV:-development}
+      - REACT_APP_API_URL=${REACT_APP_API_URL:-http://labrat-vm:3001/api}
 
   backend:
     build:
@@ -24,5 +25,5 @@ services:
         target: /app/database
         read_only: false
     environment:
-      - NODE_ENV=development
+      - NODE_ENV=${NODE_ENV:-development}
       - PORT=3001 
