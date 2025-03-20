@@ -35,7 +35,7 @@ interface PaginationConfig {
   itemsPerPage: number;
 }
 
-const API_URL = 'http://localhost:3001/api';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 
 export default function App() {
   const [currentTab, setCurrentTab] = useState<'products' | 'categories' | 'brands'>('products');
@@ -127,9 +127,7 @@ export default function App() {
 
   // Fetch data from API
   useEffect(() => {
-    fetchProducts();
-    fetchCategories();
-    fetchBrands();
+    fetchData();
   }, []);
 
   // Add this useEffect for dark mode
@@ -141,57 +139,32 @@ export default function App() {
     }
   }, [isDarkMode]);
 
-  const fetchProducts = async () => {
+  const fetchData = async () => {
     try {
-      const response = await fetch(`${API_URL}/products`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch products');
-      }
-      const data = await response.json();
-      
-      // First fetch all categories and brands
-      const [categoriesRes, brandsRes] = await Promise.all([
+      const [productsRes, categoriesRes, brandsRes] = await Promise.all([
+        fetch(`${API_URL}/products`),
         fetch(`${API_URL}/categories`),
-        fetch(`${API_URL}/brands`)
+        fetch(`${API_URL}/brands`),
       ]);
-      
-      const categoriesData = await categoriesRes.json();
-      const brandsData = await brandsRes.json();
-      
-      // Create lookup maps for faster access
-      const categoryMap = new Map(categoriesData.map((cat: Category) => [cat.id, cat]));
-      const brandMap = new Map(brandsData.map((brand: Brand) => [brand.id, brand]));
-      
-      // Attach category and brand objects to each product
-      const productsWithDetails = data.map((product: Product) => ({
-        ...product,
-        category: categoryMap.get(product.categoryId),
-        brand: brandMap.get(product.brandId)
-      }));
-      
-      setProducts(productsWithDetails);
-    } catch (error) {
-      console.error('Error fetching products:', error);
-    }
-  };
 
-  const fetchCategories = async () => {
-    try {
-      const response = await fetch(`${API_URL}/categories`);
-      const data = await response.json();
-      setCategories(data);
-    } catch (error) {
-      console.error('Error fetching categories:', error);
-    }
-  };
+      if (!productsRes.ok || !categoriesRes.ok || !brandsRes.ok) {
+        throw new Error('Failed to fetch data');
+      }
 
-  const fetchBrands = async () => {
-    try {
-      const response = await fetch(`${API_URL}/brands`);
-      const data = await response.json();
-      setBrands(data);
+      const [productsData, categoriesData, brandsData] = await Promise.all([
+        productsRes.json(),
+        categoriesRes.json(),
+        brandsRes.json(),
+      ]);
+
+      setProducts(productsData);
+      setCategories(categoriesData);
+      setBrands(brandsData);
     } catch (error) {
-      console.error('Error fetching brands:', error);
+      console.error('Error fetching data:', error);
+      setNotificationMessage('Failed to fetch data');
+      setNotificationType('error');
+      setShowNotification(true);
     }
   };
 
@@ -206,7 +179,7 @@ export default function App() {
       });
 
       if (response.ok) {
-        await fetchCategories();
+        await fetchData();
         setIsCategoryModalOpen(false);
         setNewCategory({ name: '' });
       }
@@ -227,7 +200,7 @@ export default function App() {
         });
 
         if (response.ok) {
-          await fetchCategories();
+          await fetchData();
           setIsCategoryModalOpen(false);
           setSelectedCategory(null);
         }
@@ -245,7 +218,7 @@ export default function App() {
         });
         
         if (response.ok) {
-          await fetchCategories();
+          await fetchData();
         }
       } catch (error) {
         console.error('Error deleting category:', error);
@@ -264,7 +237,7 @@ export default function App() {
       });
 
       if (response.ok) {
-        await fetchBrands();
+        await fetchData();
         setIsBrandModalOpen(false);
         setNewBrand({ name: '' });
       }
@@ -285,7 +258,7 @@ export default function App() {
         });
 
         if (response.ok) {
-          await fetchBrands();
+          await fetchData();
           setIsBrandModalOpen(false);
           setSelectedBrand(null);
         }
@@ -303,7 +276,7 @@ export default function App() {
         });
         
         if (response.ok) {
-          await fetchBrands();
+          await fetchData();
         }
       } catch (error) {
         console.error('Error deleting brand:', error);
@@ -322,7 +295,7 @@ export default function App() {
       });
 
       if (response.ok) {
-        await fetchProducts();
+        await fetchData();
         setIsAddModalOpen(false);
         setNewProduct({
           categoryId: 0,
@@ -353,7 +326,7 @@ export default function App() {
         });
 
         if (response.ok) {
-          await fetchProducts();
+          await fetchData();
           setIsUpdateModalOpen(false);
           setSelectedProduct(null);
         }
@@ -371,7 +344,7 @@ export default function App() {
         });
         
         if (response.ok) {
-          await fetchProducts();
+          await fetchData();
         }
       } catch (error) {
         console.error('Error deleting product:', error);
@@ -573,7 +546,7 @@ export default function App() {
     }
   };
 
-  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImportExcel = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
@@ -583,21 +556,18 @@ export default function App() {
     try {
       const response = await fetch(`${API_URL}/import-excel`, {
         method: 'POST',
-        body: formData
+        body: formData,
       });
 
       if (!response.ok) {
-        throw new Error('Failed to import data');
+        throw new Error('Import failed');
       }
 
+      const data = await response.json();
       setNotificationMessage('Data imported successfully');
       setNotificationType('success');
       setShowNotification(true);
-
-      // Refresh data
-      fetchProducts();
-      fetchCategories();
-      fetchBrands();
+      fetchData();
     } catch (error) {
       console.error('Error importing data:', error);
       setNotificationMessage('Failed to import data');
@@ -666,7 +636,7 @@ export default function App() {
         <input
           type="file"
           accept=".xlsx"
-          onChange={handleFileUpload}
+          onChange={handleImportExcel}
           className="hidden"
           id="file-upload"
         />
