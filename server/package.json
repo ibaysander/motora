@@ -10,11 +10,15 @@
     "import-excel": "ts-node src/scripts/importFromExcel.ts"
   },
   "dependencies": {
+    "@types/bcrypt": "^5.0.2",
+    "@types/jsonwebtoken": "^9.0.9",
     "@types/multer": "^1.4.12",
     "@types/sequelize": "^4.28.20",
     "@types/xlsx": "^0.0.35",
+    "bcrypt": "^5.1.1",
     "cors": "^2.8.5",
     "express": "^4.21.2",
+    "jsonwebtoken": "^9.0.2",
     "multer": "^1.4.5-lts.1",
     "sequelize": "^6.37.6",
     "sqlite3": "^5.1.7",

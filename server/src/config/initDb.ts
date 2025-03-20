@@ -9,7 +9,7 @@ export const initializeDatabase = async () => {
     await sequelize.authenticate();
     console.log('Database connection established successfully.');
 
-    // Force sync to recreate tables (WARNING: This will delete existing data)
+    // Sync all models with force: true to recreate tables
     await sequelize.sync({ force: true });
     console.log('Database tables created successfully.');
 

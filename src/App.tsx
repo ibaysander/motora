@@ -93,6 +93,15 @@ export default function App() {
     return saved ? JSON.parse(saved) : { currentPage: 1, itemsPerPage: 10 };
   });
 
+  // Add new state for alphabetical filter
+  const [alphabeticalFilter, setAlphabeticalFilter] = useState<string | null>(null);
+
+  // Add new state for jump to page
+  const [jumpToPage, setJumpToPage] = useState<string>('');
+
+  // Add new state for category filter
+  const [categoryFilter, setCategoryFilter] = useState<number | null>(null);
+
   // Save dark mode to localStorage whenever it changes
   useEffect(() => {
     localStorage.setItem('isDarkMode', JSON.stringify(isDarkMode));
@@ -370,13 +379,56 @@ export default function App() {
     }
   };
 
+  // Add function to handle jump to page
+  const handleJumpToPage = (type: 'products' | 'categories' | 'brands') => {
+    const page = parseInt(jumpToPage);
+    const totalPages = type === 'products' 
+      ? getTotalPages(filteredProducts.length, productPagination.itemsPerPage)
+      : type === 'categories'
+      ? getTotalPages(categories.length, categoryPagination.itemsPerPage)
+      : getTotalPages(brands.length, brandPagination.itemsPerPage);
+
+    if (page > 0 && page <= totalPages) {
+      handlePageChange(page, type);
+      setJumpToPage('');
+    }
+  };
+
+  // Modify the filteredProducts to include category filtering
   const filteredProducts = products.filter(product => {
     const searchLower = searchQuery.toLowerCase();
-  return (
+    const matchesSearch = 
       product.category?.name.toLowerCase().includes(searchLower) ||
       product.brand?.name.toLowerCase().includes(searchLower) ||
-      (product.tipeMotor?.toLowerCase().includes(searchLower) ?? false)
-    );
+      (product.tipeMotor?.toLowerCase().includes(searchLower) ?? false);
+    
+    if (alphabeticalFilter) {
+      const firstLetter = product.category?.name.charAt(0).toUpperCase() || '';
+      if (!matchesSearch || firstLetter !== alphabeticalFilter) return false;
+    }
+    
+    if (categoryFilter) {
+      if (product.categoryId !== categoryFilter) return false;
+    }
+    
+    return matchesSearch;
+  });
+
+  // Add filteredCategories and filteredBrands variables
+  const filteredCategories = categories.filter(category => {
+    if (alphabeticalFilter) {
+      const firstLetter = category.name.charAt(0).toUpperCase();
+      return firstLetter === alphabeticalFilter;
+    }
+    return true;
+  });
+
+  const filteredBrands = brands.filter(brand => {
+    if (alphabeticalFilter) {
+      const firstLetter = brand.name.charAt(0).toUpperCase();
+      return firstLetter === alphabeticalFilter;
+    }
+    return true;
   });
 
   const sortData = <T extends Record<string, any>>(
@@ -646,6 +698,127 @@ export default function App() {
     </div>
   );
 
+  const getPaginationButtons = (currentPage: number, totalPages: number, type: 'products' | 'categories' | 'brands') => {
+    const buttons = [];
+    
+    // Always show first page
+    buttons.push(
+      <button
+        key={1}
+        onClick={() => handlePageChange(1, type)}
+        className={`px-3 py-1 border rounded ${
+          currentPage === 1 ? 'bg-blue-600 text-white' : ''
+        }`}
+      >
+        1
+      </button>
+    );
+
+    // Add ellipsis and pages around current page
+    if (currentPage > 3) {
+      buttons.push(
+        <span key="ellipsis1" className="px-2">...</span>
+      );
+    }
+
+    // Show pages around current page
+    for (let i = Math.max(2, currentPage - 1); i <= Math.min(totalPages - 1, currentPage + 1); i++) {
+      buttons.push(
+        <button
+          key={i}
+          onClick={() => handlePageChange(i, type)}
+          className={`px-3 py-1 border rounded ${
+            currentPage === i ? 'bg-blue-600 text-white' : ''
+          }`}
+        >
+          {i}
+        </button>
+      );
+    }
+
+    // Add ellipsis before last page if needed
+    if (currentPage < totalPages - 2) {
+      buttons.push(
+        <span key="ellipsis2" className="px-2">...</span>
+      );
+    }
+
+    // Always show last page if there is more than one page
+    if (totalPages > 1) {
+      buttons.push(
+        <button
+          key={totalPages}
+          onClick={() => handlePageChange(totalPages, type)}
+          className={`px-3 py-1 border rounded ${
+            currentPage === totalPages ? 'bg-blue-600 text-white' : ''
+          }`}
+        >
+          {totalPages}
+        </button>
+      );
+    }
+
+    return buttons;
+  };
+
+  // Add AlphabeticalFilter component
+  const AlphabeticalFilter = ({ type }: { type: 'products' | 'categories' | 'brands' }) => {
+    const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+    
+    return (
+      <div className="flex flex-wrap gap-2 mb-4">
+        <button
+          onClick={() => setAlphabeticalFilter(null)}
+          className={`px-3 py-1 rounded ${
+            alphabeticalFilter === null 
+              ? 'bg-blue-600 text-white' 
+              : isDarkMode 
+                ? 'bg-gray-700 text-white hover:bg-gray-600' 
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+          }`}
+        >
+          All
+        </button>
+        {alphabet.map(letter => (
+          <button
+            key={letter}
+            onClick={() => setAlphabeticalFilter(letter)}
+            className={`px-3 py-1 rounded ${
+              alphabeticalFilter === letter 
+                ? 'bg-blue-600 text-white' 
+                : isDarkMode 
+                  ? 'bg-gray-700 text-white hover:bg-gray-600' 
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+          >
+            {letter}
+          </button>
+        ))}
+      </div>
+    );
+  };
+
+  // Add CategoryFilter component
+  const CategoryFilter = () => {
+    return (
+      <div className="flex items-center space-x-2">
+        <span className="text-lg">Category:</span>
+        <select
+          value={categoryFilter || ''}
+          onChange={(e) => setCategoryFilter(e.target.value ? Number(e.target.value) : null)}
+          className={`border rounded-lg p-2 text-lg ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'}`}
+        >
+          <option value="">All Categories</option>
+          {[...categories].sort((a, b) => a.name.localeCompare(b.name)).map(category => (
+            <option key={category.id} value={category.id}>
+              {category.name}
+            </option>
+          ))}
+        </select>
+      </div>
+    );
+  };
+
   return (
     <div className={`min-h-screen ${isDarkMode ? 'bg-gray-900 text-white' : 'bg-gray-50 text-gray-900'}`}>
       {/* Header */}
@@ -685,7 +858,7 @@ export default function App() {
         {currentTab === 'products' && (
           <div className="space-y-8">
             {/* Summary Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
               <div className={`p-6 rounded-lg shadow ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
                 <h3 className="text-xl font-semibold mb-2">Total Products</h3>
                 <p className="text-3xl">{products.length} Products</p>
@@ -700,17 +873,35 @@ export default function App() {
                   {products.filter(p => p.currentStock <= p.minThreshold).length} Products
                 </p>
               </div>
+              <div className={`p-6 rounded-lg shadow ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
+                <h3 className="text-xl font-semibold mb-2">Total Harga Beli</h3>
+                <p className="text-3xl text-blue-500">
+                  Rp {products.reduce((sum, product) => sum + (product.hargaBeli || 0), 0).toLocaleString()}
+                </p>
+              </div>
+              <div className={`p-6 rounded-lg shadow ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
+                <h3 className="text-xl font-semibold mb-2">Total Harga Jual</h3>
+                <p className="text-3xl text-green-500">
+                  Rp {products.reduce((sum, product) => sum + (product.hargaJual || 0), 0).toLocaleString()}
+                </p>
+              </div>
             </div>
             
-            {/* Search and Add Button */}
-            <div className="flex justify-between items-center">
-              <input
-                type="text"
-                placeholder="Search products..."
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-                className={`border rounded-lg p-3 text-lg w-64 ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'}`}
-              />
+            {/* Add Alphabetical Filter */}
+            <AlphabeticalFilter type="products" />
+            
+            {/* Search, Category Filter and Add Button */}
+            <div className="flex flex-wrap gap-4 justify-between items-center">
+              <div className="flex flex-wrap gap-4 items-center">
+                <input
+                  type="text"
+                  placeholder="Search products..."
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                  className={`border rounded-lg p-3 text-lg w-64 ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'}`}
+                />
+                <CategoryFilter />
+              </div>
               <button
                 onClick={() => setIsAddModalOpen(true)}
                 className="bg-blue-600 text-white px-6 py-3 rounded-lg text-lg hover:bg-blue-700"
@@ -851,17 +1042,7 @@ export default function App() {
                   >
                     Previous
                   </button>
-                  {Array.from({ length: getTotalPages(filteredProducts.length, productPagination.itemsPerPage) }, (_, i) => i + 1).map(page => (
-                    <button
-                      key={page}
-                      onClick={() => handlePageChange(page, 'products')}
-                      className={`px-3 py-1 border rounded ${
-                        productPagination.currentPage === page ? 'bg-blue-600 text-white' : ''
-                      }`}
-                    >
-                      {page}
-                    </button>
-                  ))}
+                  {getPaginationButtons(productPagination.currentPage, getTotalPages(filteredProducts.length, productPagination.itemsPerPage), 'products')}
                   <button
                     onClick={() => handlePageChange(productPagination.currentPage + 1, 'products')}
                     disabled={productPagination.currentPage === getTotalPages(filteredProducts.length, productPagination.itemsPerPage)}
@@ -886,6 +1067,9 @@ export default function App() {
                 Add New Category
               </button>
             </div>
+
+            {/* Add Alphabetical Filter */}
+            <AlphabeticalFilter type="categories" />
 
             <div className="space-y-4">
               <div className="flex justify-between items-center">
@@ -918,7 +1102,7 @@ export default function App() {
                     </tr>
                   </thead>
                   <tbody>
-                    {paginateData(sortData(categories, categorySortConfig), categoryPagination).map((category, index) => (
+                    {paginateData(sortData(filteredCategories, categorySortConfig), categoryPagination).map((category, index) => (
                       <tr key={category.id} className={`border-t ${isDarkMode ? 'border-gray-700 hover:bg-gray-700/50' : 'border-gray-200 hover:bg-gray-50'}`}>
                         <td className="px-6 py-4 text-lg">{((categoryPagination.currentPage - 1) * categoryPagination.itemsPerPage) + index + 1}</td>
                         <td className="px-6 py-4 text-lg">{category.name}</td>
@@ -949,8 +1133,8 @@ export default function App() {
               <div className="flex justify-between items-center">
                 <div>
                   Showing {((categoryPagination.currentPage - 1) * categoryPagination.itemsPerPage) + 1} to{' '}
-                  {Math.min(categoryPagination.currentPage * categoryPagination.itemsPerPage, categories.length)} of{' '}
-                  {categories.length} entries
+                  {Math.min(categoryPagination.currentPage * categoryPagination.itemsPerPage, filteredCategories.length)} of{' '}
+                  {filteredCategories.length} entries
                 </div>
                 <div className="flex space-x-2">
                   <button
@@ -960,20 +1144,10 @@ export default function App() {
                   >
                     Previous
                   </button>
-                  {Array.from({ length: getTotalPages(categories.length, categoryPagination.itemsPerPage) }, (_, i) => i + 1).map(page => (
-                    <button
-                      key={page}
-                      onClick={() => handlePageChange(page, 'categories')}
-                      className={`px-3 py-1 border rounded ${
-                        categoryPagination.currentPage === page ? 'bg-blue-600 text-white' : ''
-                      }`}
-                    >
-                      {page}
-                    </button>
-                  ))}
+                  {getPaginationButtons(categoryPagination.currentPage, getTotalPages(filteredCategories.length, categoryPagination.itemsPerPage), 'categories')}
                   <button
                     onClick={() => handlePageChange(categoryPagination.currentPage + 1, 'categories')}
-                    disabled={categoryPagination.currentPage === getTotalPages(categories.length, categoryPagination.itemsPerPage)}
+                    disabled={categoryPagination.currentPage === getTotalPages(filteredCategories.length, categoryPagination.itemsPerPage)}
                     className="px-3 py-1 border rounded disabled:opacity-50"
                   >
                     Next
@@ -995,6 +1169,9 @@ export default function App() {
                 Add New Brand
               </button>
             </div>
+
+            {/* Add Alphabetical Filter */}
+            <AlphabeticalFilter type="brands" />
 
             <div className="space-y-4">
               <div className="flex justify-between items-center">
@@ -1027,7 +1204,7 @@ export default function App() {
                   </tr>
                 </thead>
                 <tbody>
-                    {paginateData(sortData(brands, brandSortConfig), brandPagination).map((brand, index) => (
+                    {paginateData(sortData(filteredBrands, brandSortConfig), brandPagination).map((brand, index) => (
                       <tr key={brand.id} className={`border-t ${isDarkMode ? 'border-gray-700 hover:bg-gray-700/50' : 'border-gray-200 hover:bg-gray-50'}`}>
                         <td className="px-6 py-4 text-lg">{((brandPagination.currentPage - 1) * brandPagination.itemsPerPage) + index + 1}</td>
                         <td className="px-6 py-4 text-lg">{brand.name}</td>
@@ -1058,8 +1235,8 @@ export default function App() {
               <div className="flex justify-between items-center">
                 <div>
                   Showing {((brandPagination.currentPage - 1) * brandPagination.itemsPerPage) + 1} to{' '}
-                  {Math.min(brandPagination.currentPage * brandPagination.itemsPerPage, brands.length)} of{' '}
-                  {brands.length} entries
+                  {Math.min(brandPagination.currentPage * brandPagination.itemsPerPage, filteredBrands.length)} of{' '}
+                  {filteredBrands.length} entries
                 </div>
                 <div className="flex space-x-2">
                   <button
@@ -1069,20 +1246,10 @@ export default function App() {
                   >
                     Previous
                   </button>
-                  {Array.from({ length: getTotalPages(brands.length, brandPagination.itemsPerPage) }, (_, i) => i + 1).map(page => (
-                    <button
-                      key={page}
-                      onClick={() => handlePageChange(page, 'brands')}
-                      className={`px-3 py-1 border rounded ${
-                        brandPagination.currentPage === page ? 'bg-blue-600 text-white' : ''
-                      }`}
-                    >
-                      {page}
-                    </button>
-                  ))}
+                  {getPaginationButtons(brandPagination.currentPage, getTotalPages(filteredBrands.length, brandPagination.itemsPerPage), 'brands')}
                   <button
                     onClick={() => handlePageChange(brandPagination.currentPage + 1, 'brands')}
-                    disabled={brandPagination.currentPage === getTotalPages(brands.length, brandPagination.itemsPerPage)}
+                    disabled={brandPagination.currentPage === getTotalPages(filteredBrands.length, brandPagination.itemsPerPage)}
                     className="px-3 py-1 border rounded disabled:opacity-50"
                   >
                     Next

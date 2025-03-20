@@ -6,7 +6,7 @@ import categoryRoutes from './routes/categories';
 import brandRoutes from './routes/brands';
 import multer from 'multer';
 import xlsx from 'xlsx';
-import { Product, Category, Brand } from './models/index';
+import { Product, Category, Brand } from './models';
 import { Model, InferAttributes, InferCreationAttributes } from 'sequelize';
 import path from 'path';
 
@@ -67,70 +67,85 @@ app.post('/api/import-excel', upload.single('file'), async (req, res) => {
     }
 
     const workbook = xlsx.readFile(req.file.path);
-    const sheetName = workbook.SheetNames[0];
-    const worksheet = workbook.Sheets[sheetName];
-    const data = xlsx.utils.sheet_to_json(worksheet);
+    const results: { [key: string]: number } = {};
 
-    let currentCategory: string | null = null;
-    let currentBrand: string | null = null;
-    const categoryMap = new Map<string, number>();
-    const brandMap = new Map<string, number>();
+    // Process each sheet
+    for (const sheetName of workbook.SheetNames) {
+      const worksheet = workbook.Sheets[sheetName];
+      const data = xlsx.utils.sheet_to_json(worksheet);
+      let importedCount = 0;
 
-    // Process each row
-    for (const row of data as any[]) {
-      // Update current category if present
-      if (row['NAMA PRODUK']) {
-        currentCategory = row['NAMA PRODUK'].trim();
+      let currentCategory: string | null = null;
+      let currentBrand: string | null = null;
+      const categoryMap = new Map<string, number>();
+      const brandMap = new Map<string, number>();
+
+      // Process each row
+      for (const row of data as any[]) {
+        // Update current category if present
+        if (row['NAMA PRODUK']) {
+          currentCategory = row['NAMA PRODUK'].trim();
+        }
+
+        // Update current brand if present
+        if (row['MEREK']) {
+          currentBrand = row['MEREK'].trim();
+        }
+
+        // Skip rows without essential data
+        if (!currentCategory || !currentBrand) continue;
+
+        try {
+          // Create or get category
+          if (!categoryMap.has(currentCategory)) {
+            const [category] = await Category.findOrCreate({
+              where: { name: currentCategory }
+            });
+            categoryMap.set(currentCategory, category.get('id') as number);
+          }
+
+          // Create or get brand
+          if (!brandMap.has(currentBrand)) {
+            const [brand] = await Brand.findOrCreate({
+              where: { name: currentBrand }
+            });
+            brandMap.set(currentBrand, brand.get('id') as number);
+          }
+
+          // Create product
+          const tipeMotor = row['TIPE MOTOR'] ? String(row['TIPE MOTOR']).trim() : null;
+          const tipeSize = row['TIPE / SIZE'] ? String(row['TIPE / SIZE']).trim() : null;
+          const hargaBeli = row['BELI'] ? Number(row['BELI']) : null;
+          const hargaJual = row['JUAL'] ? Number(row['JUAL']) : null;
+          const note = row['NOTE'] ? String(row['NOTE']).trim() : null;
+
+          await Product.create({
+            categoryId: categoryMap.get(currentCategory)!,
+            brandId: brandMap.get(currentBrand)!,
+            tipeMotor,
+            tipeSize,
+            hargaBeli,
+            hargaJual,
+            note,
+            currentStock: 0,
+            minThreshold: 0
+          });
+          importedCount++;
+        } catch (error) {
+          console.error(`Error importing row in sheet ${sheetName}:`, error);
+        }
       }
 
-      // Update current brand if present
-      if (row['MEREK']) {
-        currentBrand = row['MEREK'].trim();
-      }
-
-      // Skip rows without essential data
-      if (!currentCategory || !currentBrand) continue;
-
-      // Create or get category
-      if (!categoryMap.has(currentCategory)) {
-        const [category] = await Category.findOrCreate({
-          where: { name: currentCategory }
-        });
-        categoryMap.set(currentCategory, category.get('id') as number);
-      }
-
-      // Create or get brand
-      if (!brandMap.has(currentBrand)) {
-        const [brand] = await Brand.findOrCreate({
-          where: { name: currentBrand }
-        });
-        brandMap.set(currentBrand, brand.get('id') as number);
-      }
-
-      // Create product
-      const tipeMotor = row['TIPE MOTOR'] ? String(row['TIPE MOTOR']).trim() : null;
-      const tipeSize = row['TIPE / SIZE'] ? String(row['TIPE / SIZE']).trim() : null;
-      const hargaBeli = row['BELI'] ? Number(row['BELI']) : null;
-      const hargaJual = row['JUAL'] ? Number(row['JUAL']) : null;
-      const note = row['NOTE'] ? String(row['NOTE']).trim() : null;
-
-      await Product.create({
-        categoryId: categoryMap.get(currentCategory)!,
-        brandId: brandMap.get(currentBrand)!,
-        tipeMotor,
-        tipeSize,
-        hargaBeli,
-        hargaJual,
-        note,
-        currentStock: 0,
-        minThreshold: 0
-      });
+      results[sheetName] = importedCount;
     }
 
     // Delete the uploaded file
     fs.unlinkSync(req.file.path);
 
-    res.json({ message: 'Data imported successfully' });
+    res.json({ 
+      message: 'Data imported successfully',
+      results
+    });
   } catch (error) {
     console.error('Error importing data:', error);
     res.status(500).json({ error: 'Failed to import data' });
@@ -140,7 +155,10 @@ app.post('/api/import-excel', upload.single('file'), async (req, res) => {
 // Export Excel endpoint
 app.get('/api/export-excel', async (req, res) => {
   try {
-    // Fetch all data with proper typing
+    // Create workbook
+    const workbook = xlsx.utils.book_new();
+
+    // Export Products sheet
     const products = await Product.findAll({
       include: [
         { model: Category, as: 'category' },
@@ -148,8 +166,7 @@ app.get('/api/export-excel', async (req, res) => {
       ]
     }) as unknown as ProductWithAssociations[];
 
-    // Transform data for Excel with proper type handling
-    const excelData = products.map(product => {
+    const productsData = products.map(product => {
       const productData = product.get({ plain: true });
       return {
         'NAMA PRODUK': productData.category?.name || '',
@@ -164,19 +181,33 @@ app.get('/api/export-excel', async (req, res) => {
       };
     });
 
-    // Create workbook
-    const workbook = xlsx.utils.book_new();
-    const worksheet = xlsx.utils.json_to_sheet(excelData);
+    const productsWorksheet = xlsx.utils.json_to_sheet(productsData);
+    xlsx.utils.book_append_sheet(workbook, productsWorksheet, 'Products');
 
-    // Add worksheet to workbook
-    xlsx.utils.book_append_sheet(workbook, worksheet, 'Products');
+    // Export Categories sheet
+    const categories = await Category.findAll();
+    const categoriesData = categories.map(category => ({
+      'ID': category.get('id'),
+      'NAMA KATEGORI': category.get('name')
+    }));
+    const categoriesWorksheet = xlsx.utils.json_to_sheet(categoriesData);
+    xlsx.utils.book_append_sheet(workbook, categoriesWorksheet, 'Categories');
+
+    // Export Brands sheet
+    const brands = await Brand.findAll();
+    const brandsData = brands.map(brand => ({
+      'ID': brand.get('id'),
+      'NAMA MEREK': brand.get('name')
+    }));
+    const brandsWorksheet = xlsx.utils.json_to_sheet(brandsData);
+    xlsx.utils.book_append_sheet(workbook, brandsWorksheet, 'Brands');
 
     // Generate Excel file
     const excelBuffer = xlsx.write(workbook, { type: 'buffer', bookType: 'xlsx' });
 
     // Set headers for file download
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', 'attachment; filename=products.xlsx');
+    res.setHeader('Content-Disposition', 'attachment; filename=inventory_data.xlsx');
 
     res.send(excelBuffer);
   } catch (error) {
