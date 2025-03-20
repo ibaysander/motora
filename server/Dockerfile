@@ -1,27 +1,28 @@
 FROM node:18-alpine
 
-WORKDIR /app
-
-# Install sqlite3 and its dependencies
+# Install dependencies
 RUN apk add --no-cache sqlite sqlite-dev python3 make g++
 
-# Create database directory and set permissions
+# Create app directory
+WORKDIR /app
+
+# Create database directory with proper permissions
 RUN mkdir -p /app/database && \
     chown -R node:node /app/database && \
-    chmod 755 /app/database
+    chmod -R 777 /app/database
 
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies and explicitly install sqlite3
+# Install dependencies
 RUN npm install && npm install sqlite3
 
-# Copy source code
+# Copy app source
 COPY . .
 
-# Set proper ownership
+# Set proper permissions
 RUN chown -R node:node /app && \
-    chmod -R 755 /app
+    chmod -R 777 /app
 
 # Switch to non-root user
 USER node

@@ -34,9 +34,10 @@ const PORT = process.env.PORT || 3001;
 
 // Configure CORS
 app.use(cors({
-  origin: ['http://labrat-vm:3000', 'http://localhost:3000'],
+  origin: true, // Allow all origins in production
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  credentials: true
 }));
 
 // Configure multer for file upload
