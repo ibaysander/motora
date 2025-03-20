@@ -636,15 +636,17 @@ export default function App() {
 
   // Add notification component
   const Notification = () => {
-    if (!showNotification) return null;
-
     useEffect(() => {
+      if (!showNotification) return;
+      
       const timer = setTimeout(() => {
         setShowNotification(false);
       }, 3000);
 
       return () => clearTimeout(timer);
-    }, []);
+    }, [showNotification]);
+
+    if (!showNotification) return null;
 
     return (
       <div
