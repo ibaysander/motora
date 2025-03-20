@@ -1,0 +1,31 @@
+{
+  "name": "motora-server",
+  "version": "1.0.0",
+  "description": "Backend server for Motorcycle Parts Management System",
+  "main": "src/index.ts",
+  "scripts": {
+    "start": "ts-node src/index.ts",
+    "dev": "nodemon src/index.ts",
+    "build": "tsc",
+    "import-excel": "ts-node src/scripts/importFromExcel.ts"
+  },
+  "dependencies": {
+    "@types/multer": "^1.4.12",
+    "@types/sequelize": "^4.28.20",
+    "@types/xlsx": "^0.0.35",
+    "cors": "^2.8.5",
+    "express": "^4.21.2",
+    "multer": "^1.4.5-lts.1",
+    "sequelize": "^6.37.6",
+    "sqlite3": "^5.1.7",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
+    "@types/node": "^20.11.19",
+    "nodemon": "^3.0.3",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.3.3"
+  }
+}

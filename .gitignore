@@ -21,3 +21,6 @@
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+server/LIST.xlsx
+server/~$LIST.xlsx
+server/database.sqlite

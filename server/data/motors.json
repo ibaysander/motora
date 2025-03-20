@@ -1,0 +1,223 @@
+[
+  {
+    "NAMA PRODUK": "AKI",
+    "MEREK": "MOTOBATT",
+    "TIPE / SIZE": "KERING / GTZ5",
+    "BELI": 157000,
+    "JUAL": 195000
+  },
+  {
+    "MEREK": "MOTOBATT",
+    "TIPE MOTOR": "NINJA 250 FI",
+    "TIPE / SIZE": "MTX7A",
+    "BELI": 237000,
+    "JUAL": 400000
+  },
+  {
+    "MEREK": "MOTOBATT",
+    "TIPE MOTOR": "FU",
+    "TIPE / SIZE": "MTZ6",
+    "BELI": 201500,
+    "JUAL": 250000
+  },
+  {
+    "MEREK": "GS",
+    "TIPE / SIZE": "KERING / GTZ-6V",
+    "BELI": 227000,
+    "JUAL": 270000
+  },
+  {
+    "MEREK": "GS",
+    "TIPE / SIZE": "KERING / GTZ-5S",
+    "BELI": 182000,
+    "JUAL": 220000
+  },
+  {
+    "MEREK": "GS TJM",
+    "TIPE / SIZE": "KERING / GTZ-5S",
+    "BELI": 248000
+  },
+  {
+    "MEREK": "GS",
+    "TIPE / SIZE": "KERING / GTZ7S",
+    "BELI": 245000,
+    "JUAL": 275000
+  },
+  {
+    "MEREK": "GS",
+    "TIPE / SIZE": "BASAH / GM5Z-3B KIT",
+    "BELI": 137000,
+    "JUAL": 165000
+  },
+  {
+    "MEREK": "GS",
+    "TIPE / SIZE": "KERING / GM5Z-3B MF",
+    "BELI": 158500,
+    "JUAL": 220000
+  },
+  {
+    "MEREK": "GS",
+    "TIPE / SIZE": "KERING / GTZ-6V",
+    "BELI": 217000,
+    "JUAL": 270000
+  },
+  {
+    "MEREK": "VOODOO / YGS",
+    "TIPE / SIZE": "KERING / GTZ",
+    "BELI": 77500,
+    "JUAL": 135000
+  },
+  {
+    "MEREK": "INDOPART",
+    "TIPE / SIZE": "GM5Z-3B",
+    "BELI": 110000,
+    "JUAL": 135000
+  },
+  {
+    "MEREK": "RACE IT",
+    "TIPE / SIZE": "GTZ5S",
+    "BELI": 85000,
+    "JUAL": 135000
+  },
+  {
+    "MEREK": "TORPEDO RACE IT",
+    "TIPE / SIZE": "GM5Z-3B",
+    "BELI": 115000,
+    "JUAL": 165000
+  },
+  {
+    "MEREK": "NKP PLATINUM FULL KERING",
+    "BELI": 80000,
+    "JUAL": 135000
+  },
+  {
+    "MEREK": "SMOOO",
+    "TIPE / SIZE": "FULL KERING",
+    "BELI": 78000,
+    "JUAL": 135000
+  },
+  {
+    "MEREK": "RAINBOW",
+    "TIPE / SIZE": "GM5Z SEMI KERING",
+    "BELI": 95000,
+    "JUAL": 150000
+  },
+  {
+    "MEREK": "RAINBOW",
+    "TIPE / SIZE": "GTZS",
+    "BELI": 72000,
+    "JUAL": 135000
+  },
+  {
+    "MEREK": "HITEQ",
+    "TIPE / SIZE": "HTZ5S",
+    "BELI": 100000,
+    "JUAL": 150000
+  },
+  {
+    "MEREK": "WOTOBATT",
+    "TIPE / SIZE": "GM5Z FULL KERING",
+    "BELI": 110000,
+    "JUAL": 150000
+  },
+  {
+    "MEREK": "CSW",
+    "TIPE / SIZE": "KERING / GTZ",
+    "BELI": 86000,
+    "JUAL": 135000
+  },
+  {
+    "MEREK": "WILZ",
+    "TIPE / SIZE": "GTZ5S",
+    "BELI": 80000
+  },
+  {
+    "NAMA PRODUK": "AIR AKI",
+    "MEREK": "LOKAL",
+    "TIPE / SIZE": "MERAH SEDANG",
+    "JUAL": 6000
+  },
+  {
+    "TIPE / SIZE": "BIRU SEDANG",
+    "JUAL": 5000
+  },
+  {
+    "TIPE / SIZE": "MERAH BESAR",
+    "JUAL": 10000
+  },
+  {
+    "TIPE / SIZE": "BIRU BESAR",
+    "BELI": 6000,
+    "JUAL": 8000
+  },
+  {
+    "NAMA PRODUK": "AISAN KNALPOT",
+    "MEREK": "LOKAL",
+    "TIPE / SIZE": "STANDAR ALUMINIUM",
+    "BELI": 3500,
+    "JUAL": 7000
+  },
+  {
+    "TIPE / SIZE": "KARET SEDANG",
+    "JUAL": 15000
+  },
+  {
+    "TIPE / SIZE": "KARET BESAR",
+    "JUAL": 20000
+  },
+  {
+    "NAMA PRODUK": "AS SHOCKBREAKER",
+    "MEREK": "ORI YGP",
+    "TIPE MOTOR": "MIO",
+    "JUAL": 150000,
+    "NOTE": "PIPE COMP FR FORK",
+    "__EMPTY": "1 PCS"
+  },
+  {
+    "MEREK": "ORI AHM",
+    "TIPE MOTOR": "BEAT KARBU",
+    "TIPE / SIZE": "KVY",
+    "BELI": 142500,
+    "__EMPTY": "1 PCS"
+  },
+  {
+    "MEREK": "KGW / WINNER",
+    "TIPE MOTOR": "BEAT / VARIO",
+    "BELI": 79000,
+    "JUAL": 135000
+  },
+  {
+    "MEREK": "KGW / WINNER",
+    "TIPE MOTOR": "MIO 08",
+    "BELI": 79000,
+    "JUAL": 135000
+  },
+  {
+    "MEREK": "KGW / WINNER",
+    "TIPE MOTOR": "JUPPITER-Z",
+    "BELI": 79000
+  },
+  {
+    "MEREK": "LOKAL RJ",
+    "TIPE MOTOR": "SMASH",
+    "BELI": 55000
+  },
+  {
+    "NAMA PRODUK": "AS RODA",
+    "MEREK": "LOKAL",
+    "TIPE MOTOR": "JUPITER",
+    "BELI": 7500,
+    "JUAL": 25000
+  },
+  {
+    "MEREK": "LOKAL",
+    "TIPE MOTOR": "SUPRA",
+    "BELI": 10000,
+    "JUAL": 25000
+  },
+  {
+    "NAMA PRODUK": "AUTOSOL",
+    "MEREK": "AUTOSOL",
+    "JUAL": 20000
+  }
+]
