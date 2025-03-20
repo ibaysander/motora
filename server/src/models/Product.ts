@@ -32,7 +32,7 @@ Product.init(
       allowNull: false,
       field: 'category_id',
       references: {
-        model: 'categories',
+        model: 'Categories',
         key: 'id',
       },
     },

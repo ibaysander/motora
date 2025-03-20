@@ -22,9 +22,9 @@ Category.init(
   {
     sequelize,
     modelName: 'Category',
-    tableName: 'categories',
+    tableName: 'Categories',
     timestamps: true,
-    underscored: true,
+    underscored: false,
   }
 );
 
