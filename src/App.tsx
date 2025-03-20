@@ -35,7 +35,7 @@ interface PaginationConfig {
   itemsPerPage: number;
 }
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
 
 export default function App() {
   const [currentTab, setCurrentTab] = useState<'products' | 'categories' | 'brands'>('products');
@@ -548,28 +548,45 @@ export default function App() {
 
   const handleImportExcel = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (!file) return;
+    if (!file) {
+      console.log('No file selected for import');
+      return;
+    }
+
+    console.log('Starting Excel import process...');
+    console.log('File details:', {
+      name: file.name,
+      size: `${(file.size / 1024).toFixed(2)} KB`,
+      type: file.type
+    });
 
     const formData = new FormData();
     formData.append('file', file);
 
     try {
+      console.log('Sending import request to:', `${API_URL}/import-excel`);
       const response = await fetch(`${API_URL}/import-excel`, {
         method: 'POST',
         body: formData,
       });
 
+      console.log('Import response status:', response.status);
+      
       if (!response.ok) {
-        throw new Error('Import failed');
+        const errorText = await response.text();
+        console.error('Import failed with status:', response.status, 'Error:', errorText);
+        throw new Error(`Import failed: ${errorText}`);
       }
 
       const data = await response.json();
+      console.log('Import successful. Response data:', data);
+      
       setNotificationMessage('Data imported successfully');
       setNotificationType('success');
       setShowNotification(true);
       fetchData();
     } catch (error) {
-      console.error('Error importing data:', error);
+      console.error('Error during import process:', error);
       setNotificationMessage('Failed to import data');
       setNotificationType('error');
       setShowNotification(true);
