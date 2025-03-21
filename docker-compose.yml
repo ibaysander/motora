@@ -20,10 +20,13 @@ services:
     ports:
       - "0.0.0.0:3001:3001"
     volumes:
-      - type: bind
-        source: ./server/database
-        target: /app/database
-        read_only: false
+      - db_data:/app/database
     environment:
       - NODE_ENV=${NODE_ENV:-development}
-      - PORT=3001 
+      - PORT=3001
+    user: node
+
+volumes:
+  db_data:
+    name: motora_db_data
+    driver: local 

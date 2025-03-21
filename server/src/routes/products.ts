@@ -93,4 +93,21 @@ router.delete('/products/:id', async (req, res) => {
   }
 });
 
+// Clear all data
+router.post('/products/clear-all', async (req, res) => {
+  try {
+    // Delete all products first (due to foreign key constraints)
+    await Product.destroy({ where: {} });
+    
+    // Delete all categories and brands
+    await Category.destroy({ where: {} });
+    await Brand.destroy({ where: {} });
+
+    res.json({ message: 'All data cleared successfully' });
+  } catch (error) {
+    console.error('Error clearing data:', error);
+    res.status(500).json({ error: 'Failed to clear data' });
+  }
+});
+
 export default router; 

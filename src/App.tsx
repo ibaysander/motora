@@ -65,6 +65,8 @@ export default function App() {
   const [newBrand, setNewBrand] = useState({ name: '' });
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
   const [selectedBrand, setSelectedBrand] = useState<Brand | null>(null);
+  const [isClearDataModalOpen, setIsClearDataModalOpen] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
 
   // New Product Form State
   const [newProduct, setNewProduct] = useState({
@@ -555,47 +557,39 @@ export default function App() {
   const handleImportExcel = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) {
-      console.log('No file selected for import');
       return;
     }
 
-    console.log('Starting Excel import process...');
-    console.log('File details:', {
-      name: file.name,
-      size: `${(file.size / 1024).toFixed(2)} KB`,
-      type: file.type
-    });
-
+    setIsImporting(true);
     const formData = new FormData();
     formData.append('file', file);
 
     try {
-      console.log('Sending import request to:', `${API_URL}/import-excel`);
       const response = await fetch(`${API_URL}/import-excel`, {
         method: 'POST',
         body: formData,
       });
-
-      console.log('Import response status:', response.status);
       
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('Import failed with status:', response.status, 'Error:', errorText);
         throw new Error(`Import failed: ${errorText}`);
       }
 
       const data = await response.json();
-      console.log('Import successful. Response data:', data);
-      
       setNotificationMessage('Data imported successfully');
       setNotificationType('success');
       setShowNotification(true);
       fetchData();
     } catch (error) {
-      console.error('Error during import process:', error);
       setNotificationMessage('Failed to import data');
       setNotificationType('error');
       setShowNotification(true);
+    } finally {
+      setIsImporting(false);
+      // Reset the file input
+      if (event.target) {
+        event.target.value = '';
+      }
     }
   };
 
@@ -622,6 +616,31 @@ export default function App() {
     } catch (error) {
       console.error('Error exporting data:', error);
       setNotificationMessage('Failed to export data');
+      setNotificationType('error');
+      setShowNotification(true);
+    }
+  };
+
+  const handleClearData = async () => {
+    try {
+      const response = await fetch(`${API_URL}/products/clear-all`, {
+        method: 'POST',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to clear data');
+      }
+
+      // Refresh data
+      fetchData();
+      setIsClearDataModalOpen(false);
+      
+      setNotificationMessage('All data cleared successfully');
+      setNotificationType('success');
+      setShowNotification(true);
+    } catch (error) {
+      console.error('Error clearing data:', error);
+      setNotificationMessage('Failed to clear data');
       setNotificationType('error');
       setShowNotification(true);
     }
@@ -655,29 +674,46 @@ export default function App() {
   // Add these buttons in your JSX where appropriate
   const ImportExportButtons = () => (
     <div className="flex gap-4 mb-4">
-        <div className="relative">
+      <div className="relative">
         <input
           type="file"
           accept=".xlsx"
           onChange={handleImportExcel}
           className="hidden"
           id="file-upload"
+          disabled={isImporting}
         />
         <label
           htmlFor="file-upload"
           className={`cursor-pointer px-4 py-2 rounded-lg ${
             isDarkMode
-              ? 'bg-blue-600 hover:bg-blue-700'
-              : 'bg-blue-500 hover:bg-blue-600'
+              ? isImporting 
+                ? 'bg-blue-400 cursor-not-allowed'
+                : 'bg-blue-600 hover:bg-blue-700'
+              : isImporting
+                ? 'bg-blue-300 cursor-not-allowed'
+                : 'bg-blue-500 hover:bg-blue-600'
           } text-white flex items-center gap-2`}
         >
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-            <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 6.707a1 1 0 010-1.414l3-3a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L11 5.414V13a1 1 0 11-2 0V5.414L7.707 6.707a1 1 0 01-1.414 0z" clipRule="evenodd" />
-          </svg>
-          Import Excel
+          {isImporting ? (
+            <>
+              <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              Importing...
+            </>
+          ) : (
+            <>
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 6.707a1 1 0 010-1.414l3-3a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L11 5.414V13a1 1 0 11-2 0V5.414L7.707 6.707a1 1 0 01-1.414 0z" clipRule="evenodd" />
+              </svg>
+              Import Excel
+            </>
+          )}
         </label>
       </div>
-          <button
+      <button
         onClick={handleExport}
         className={`px-4 py-2 rounded-lg ${
           isDarkMode
@@ -687,9 +723,9 @@ export default function App() {
       >
         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
           <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM13.707 6.707a1 1 0 010-1.414l-3-3a1 1 0 00-1.414 0l-3 3a1 1 0 001.414 1.414L9 5.414V13a1 1 0 102 0V5.414l1.293 1.293a1 1 0 001.414 0z" clipRule="evenodd" />
-            </svg>
+        </svg>
         Export Excel
-          </button>
+      </button>
     </div>
   );
 
@@ -819,12 +855,20 @@ export default function App() {
       {/* Header */}
       <header className={`flex justify-between items-center p-4 ${isDarkMode ? 'bg-gray-800' : 'bg-gray-800'} text-white`}>
         <h1 className="text-2xl font-bold">Motorcycle Parts Management</h1>
-              <button
-          onClick={() => setIsDarkMode(!isDarkMode)}
-          className={`px-4 py-2 rounded-lg ${isDarkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-600 hover:bg-gray-500'}`}
-              >
-          {isDarkMode ? '☀️ Light Mode' : '🌙 Dark Mode'}
-              </button>
+        <div className="flex items-center space-x-4">
+          <button
+            onClick={() => setIsClearDataModalOpen(true)}
+            className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg"
+          >
+            Clear All Data
+          </button>
+          <button
+            onClick={() => setIsDarkMode(!isDarkMode)}
+            className={`px-4 py-2 rounded-lg ${isDarkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-600 hover:bg-gray-500'}`}
+          >
+            {isDarkMode ? '☀️ Light Mode' : '🌙 Dark Mode'}
+          </button>
+        </div>
       </header>
       
       {/* Navigation Tabs */}
@@ -1590,6 +1634,32 @@ export default function App() {
 
       <ImportExportButtons />
       <Notification />
+
+      {/* Clear Data Confirmation Modal */}
+      {isClearDataModalOpen && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
+          <div className={`rounded-lg p-6 w-96 ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
+            <h2 className="text-2xl font-bold mb-4">Clear All Data</h2>
+            <p className="mb-6 text-lg">Are you sure you want to clear all data? This action cannot be undone.</p>
+            <div className="flex justify-end space-x-4">
+              <button
+                onClick={() => setIsClearDataModalOpen(false)}
+                className={`px-4 py-2 rounded-lg ${
+                  isDarkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-200 hover:bg-gray-300'
+                }`}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleClearData}
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg"
+              >
+                Clear Data
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
