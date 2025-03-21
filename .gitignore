@@ -30,3 +30,8 @@ server/database/
 *.sqlite
 *.sqlite3
 *.db
+
+# Template and uploaded files
+server/data/
+server/uploads/
+*.xlsx
