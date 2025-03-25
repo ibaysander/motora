@@ -1,4 +1,5 @@
 import React, { useState, ChangeEvent, useEffect } from 'react';
+import Login from './components/Login';
 
 interface Category {
   id: number;
@@ -44,6 +45,11 @@ interface PaginationConfig {
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
 
 export default function App() {
+  const [isAuthenticated, setIsAuthenticated] = useState(() => {
+    const saved = localStorage.getItem('isAuthenticated');
+    const rememberMe = localStorage.getItem('rememberMe') === 'true';
+    return saved && rememberMe ? JSON.parse(saved) : false;
+  });
   const [currentTab, setCurrentTab] = useState<'products' | 'categories' | 'brands'>('products');
   const [isDarkMode, setIsDarkMode] = useState(() => {
     const saved = localStorage.getItem('isDarkMode');
@@ -132,6 +138,16 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('brandPagination', JSON.stringify(brandPagination));
   }, [brandPagination]);
+
+  // Save authentication state to localStorage
+  useEffect(() => {
+    const rememberMe = localStorage.getItem('rememberMe') === 'true';
+    if (rememberMe) {
+      localStorage.setItem('isAuthenticated', JSON.stringify(isAuthenticated));
+    } else {
+      localStorage.removeItem('isAuthenticated');
+    }
+  }, [isAuthenticated]);
 
   // Fetch data from API
   useEffect(() => {
@@ -850,12 +866,29 @@ export default function App() {
     );
   };
 
+  const handleLogout = () => {
+    setIsAuthenticated(false);
+    localStorage.removeItem('isAuthenticated');
+    localStorage.removeItem('rememberMe');
+  };
+
+  // If not authenticated, show login page
+  if (!isAuthenticated) {
+    return <Login onLogin={() => setIsAuthenticated(true)} isDarkMode={isDarkMode} />;
+  }
+
   return (
     <div className={`min-h-screen ${isDarkMode ? 'bg-gray-900 text-white' : 'bg-gray-50 text-gray-900'}`}>
       {/* Header */}
       <header className={`flex justify-between items-center p-4 ${isDarkMode ? 'bg-gray-800' : 'bg-gray-800'} text-white`}>
-        <h1 className="text-2xl font-bold">Motorcycle Parts Management</h1>
+        <h1 className="text-2xl font-bold">Motora</h1>
         <div className="flex items-center space-x-4">
+          <button
+            onClick={handleLogout}
+            className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg"
+          >
+            Logout
+          </button>
           <button
             onClick={() => setIsClearDataModalOpen(true)}
             className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg"
@@ -1465,7 +1498,7 @@ export default function App() {
                   type="number"
                   value={newProduct.hargaJual}
                   onChange={(e) => setNewProduct({ ...newProduct, hargaJual: Number(e.target.value) })}
-                  className={`border rounded-lg p-3 text-lg w-full ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'}`}
+                  className={`border rounded-lg p-3 text-lg w-full ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' : 'bg-white border-gray-300'}`}
                 />
               </div>
               <div>
