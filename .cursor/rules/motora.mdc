@@ -1,0 +1,8 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+
+1. this is a docker project, always check the package.json don't use npm install
+2. this is a Create React App project, not a Vite project

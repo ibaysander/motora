@@ -1,50 +1,77 @@
-import React, { useState, ChangeEvent, useEffect } from 'react';
+import React, { useState, ChangeEvent, useEffect, FC } from 'react';
 import Login from './components/Login';
+import { Product, Category, Brand, SortConfig, PaginationConfig } from './types';
+import ProductList from './components/ProductList';
+import ProductCard from './components/ProductCard';
+import CategoryCard from './components/CategoryCard';
+import BrandCard from './components/BrandCard';
 
-interface Category {
-  id: number;
-  name: string;
+interface AppProps {
+  currentTab: string;
+  setCurrentTab: (tab: string) => void;
+  isDarkMode: boolean;
+  setIsDarkMode: (isDark: boolean) => void;
 }
 
-interface Brand {
-  id: number;
-  name: string;
-}
-
-interface Product {
-  id: number;
-  categoryId: number;
-  brandId: number;
-  tipeMotor: string | null;
-  tipeSize: string | null;
-  hargaBeli: number | null;
-  hargaJual: number | null;
-  note: string | null;
-  currentStock: number;
-  minThreshold: number;
-  Category?: {
-    id: number;
-    name: string;
-  };
-  Brand?: {
-    id: number;
-    name: string;
-  };
-}
-
-interface SortConfig {
-  key: string;
-  direction: 'asc' | 'desc';
-}
-
-interface PaginationConfig {
-  currentPage: number;
-  itemsPerPage: number;
+declare global {
+  namespace NodeJS {
+    interface ProcessEnv {
+      REACT_APP_API_URL: string;
+    }
+  }
 }
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
 
-export default function App() {
+interface SidebarProps {
+  currentTab: 'products' | 'categories' | 'brands';
+  setCurrentTab: (tab: 'products' | 'categories' | 'brands') => void;
+  isDarkMode: boolean;
+}
+
+interface Tab {
+  id: 'products' | 'categories' | 'brands';
+  icon: string;
+  label: string;
+}
+
+const tabs: Tab[] = [
+  { id: 'products', icon: '📦', label: 'Products' },
+  { id: 'categories', icon: '📁', label: 'Categories' },
+  { id: 'brands', icon: '🏢', label: 'Brands' }
+];
+
+const Sidebar: React.FC<SidebarProps> = ({ currentTab, setCurrentTab, isDarkMode }) => {
+  return (
+    <div className={`w-20 min-h-screen fixed left-0 top-0 ${isDarkMode ? 'bg-gray-900' : 'bg-gray-100'} border-r ${isDarkMode ? 'border-gray-800' : 'border-gray-200'}`}>
+      <div className="flex flex-col items-center py-6">
+        <div className="mb-8">
+          <span className="text-2xl">🏍️</span>
+        </div>
+        {tabs.map(tab => (
+          <button
+            key={tab.id}
+            onClick={() => setCurrentTab(tab.id as 'products' | 'categories' | 'brands')}
+            className={`w-12 h-12 mb-4 rounded-xl flex items-center justify-center text-lg
+              ${currentTab === tab.id 
+                ? isDarkMode 
+                  ? 'bg-blue-600 text-white' 
+                  : 'bg-blue-500 text-white'
+                : isDarkMode
+                  ? 'text-gray-400 hover:bg-gray-800'
+                  : 'text-gray-500 hover:bg-gray-200'
+              }`}
+            title={tab.label}
+          >
+            {tab.icon}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+const App: FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(() => {
     // Initialize from localStorage
     const savedAuth = localStorage.getItem('isAuthenticated');
@@ -73,6 +100,9 @@ export default function App() {
   const [selectedBrand, setSelectedBrand] = useState<Brand | null>(null);
   const [isClearDataModalOpen, setIsClearDataModalOpen] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+  const [viewMode, setViewMode] = useState<'table' | 'card'>('table');
+  const [itemsPerPageOptions] = useState([10, 25, 50, 100]);
 
   // New Product Form State
   const [newProduct, setNewProduct] = useState({
@@ -115,6 +145,10 @@ export default function App() {
 
   // Add new state for category filter
   const [categoryFilter, setCategoryFilter] = useState<number | null>(null);
+
+  // Add new state for category view mode
+  const [categoryViewMode, setCategoryViewMode] = useState<'table' | 'card'>('table');
+  const [brandViewMode, setBrandViewMode] = useState<'table' | 'card'>('table');
 
   // Save dark mode to localStorage whenever it changes
   useEffect(() => {
@@ -373,7 +407,7 @@ export default function App() {
   };
 
   // Add function to handle jump to page
-  const handleJumpToPage = (type: 'products' | 'categories' | 'brands') => {
+  const handleJumpToPage = (type: string) => {
     const page = parseInt(jumpToPage);
     const totalPages = type === 'products' 
       ? getTotalPages(filteredProducts.length, productPagination.itemsPerPage)
@@ -387,42 +421,28 @@ export default function App() {
     }
   };
 
-  // Modify the filteredProducts to include category filtering
+  // Add filtered products based on search and category
   const filteredProducts = products.filter(product => {
-    const searchLower = searchQuery.toLowerCase();
-    const matchesSearch = 
-      product.Category?.name.toLowerCase().includes(searchLower) ||
-      product.Brand?.name.toLowerCase().includes(searchLower) ||
-      (product.tipeMotor?.toLowerCase().includes(searchLower) ?? false);
-    
-    if (alphabeticalFilter) {
-      const firstLetter = product.Category?.name.charAt(0).toUpperCase() || '';
-      if (!matchesSearch || firstLetter !== alphabeticalFilter) return false;
-    }
-    
-    if (categoryFilter) {
-      if (product.categoryId !== categoryFilter) return false;
-    }
-    
-    return matchesSearch;
+    const matchesSearch = searchQuery.toLowerCase() === '' ||
+      (product.tipeMotor && product.tipeMotor.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (product.tipeSize && product.tipeSize.toLowerCase().includes(searchQuery.toLowerCase()));
+
+    const matchesCategory = !categoryFilter || product.categoryId === categoryFilter;
+
+    return matchesSearch && matchesCategory;
   });
 
-  // Add filteredCategories and filteredBrands variables
-  const filteredCategories = categories.filter(category => {
-    if (alphabeticalFilter) {
-      const firstLetter = category.name.charAt(0).toUpperCase();
-      return firstLetter === alphabeticalFilter;
-    }
-    return true;
-  });
+  // Add filtered categories based on search
+  const filteredCategories = categories.filter(category =>
+    searchQuery.toLowerCase() === '' ||
+    category.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
-  const filteredBrands = brands.filter(brand => {
-    if (alphabeticalFilter) {
-      const firstLetter = brand.name.charAt(0).toUpperCase();
-      return firstLetter === alphabeticalFilter;
-    }
-    return true;
-  });
+  // Add filtered brands based on search
+  const filteredBrands = brands.filter(brand =>
+    searchQuery.toLowerCase() === '' ||
+    brand.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   const sortData = <T extends Record<string, any>>(
     data: T[],
@@ -454,7 +474,7 @@ export default function App() {
     });
   };
 
-  const requestSort = (key: string, type: 'products' | 'categories' | 'brands') => {
+  const requestSort = (key: string, type: string) => {
     let direction: 'asc' | 'desc' = 'asc';
     
     switch (type) {
@@ -479,7 +499,7 @@ export default function App() {
     }
   };
 
-  const getSortIcon = (key: string, type: 'products' | 'categories' | 'brands') => {
+  const getSortIcon = (key: string, type: string) => {
     let config: SortConfig;
     switch (type) {
       case 'products':
@@ -514,24 +534,25 @@ export default function App() {
     return Math.ceil(totalItems / itemsPerPage);
   };
 
-  const handlePageChange = (page: number, type: 'products' | 'categories' | 'brands') => {
+  // Update pagination handlers with proper types
+  const handlePageChange = (page: number, type: string) => {
     switch (type) {
       case 'products':
-        setProductPagination(prev => {
+        setProductPagination((prev: PaginationConfig) => {
           const newConfig = { ...prev, currentPage: page };
           localStorage.setItem('productPagination', JSON.stringify(newConfig));
           return newConfig;
         });
         break;
       case 'categories':
-        setCategoryPagination(prev => {
+        setCategoryPagination((prev: PaginationConfig) => {
           const newConfig = { ...prev, currentPage: page };
           localStorage.setItem('categoryPagination', JSON.stringify(newConfig));
           return newConfig;
         });
         break;
       case 'brands':
-        setBrandPagination(prev => {
+        setBrandPagination((prev: PaginationConfig) => {
           const newConfig = { ...prev, currentPage: page };
           localStorage.setItem('brandPagination', JSON.stringify(newConfig));
           return newConfig;
@@ -540,24 +561,24 @@ export default function App() {
     }
   };
 
-  const handleItemsPerPageChange = (itemsPerPage: number, type: 'products' | 'categories' | 'brands') => {
+  const handleItemsPerPageChange = (itemsPerPage: number, type: string) => {
     switch (type) {
       case 'products':
-        setProductPagination(prev => {
+        setProductPagination((prev: PaginationConfig) => {
           const newConfig = { ...prev, itemsPerPage, currentPage: 1 };
           localStorage.setItem('productPagination', JSON.stringify(newConfig));
           return newConfig;
         });
         break;
       case 'categories':
-        setCategoryPagination(prev => {
+        setCategoryPagination((prev: PaginationConfig) => {
           const newConfig = { ...prev, itemsPerPage, currentPage: 1 };
           localStorage.setItem('categoryPagination', JSON.stringify(newConfig));
           return newConfig;
         });
         break;
       case 'brands':
-        setBrandPagination(prev => {
+        setBrandPagination((prev: PaginationConfig) => {
           const newConfig = { ...prev, itemsPerPage, currentPage: 1 };
           localStorage.setItem('brandPagination', JSON.stringify(newConfig));
           return newConfig;
@@ -567,38 +588,43 @@ export default function App() {
   };
 
   const handleImportExcel = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) {
-      return;
-    }
-
+    if (!event.target.files || !event.target.files[0]) return;
+    
     setIsImporting(true);
     const formData = new FormData();
-    formData.append('file', file);
+    formData.append('file', event.target.files[0]);
 
     try {
+      console.log('Sending import request to:', `${API_URL}/import-excel`);
       const response = await fetch(`${API_URL}/import-excel`, {
         method: 'POST',
         body: formData,
       });
+
+      console.log('Import response status:', response.status);
       
       if (!response.ok) {
         const errorText = await response.text();
+        console.error('Import error:', errorText);
         throw new Error(`Import failed: ${errorText}`);
       }
 
-      const data = await response.json();
-      setNotificationMessage('Data imported successfully');
+      const result = await response.json();
+      console.log('Import result:', result);
+      
+      // Fetch updated data after successful import
+      await fetchData();
+      
+      setNotificationMessage('Data imported successfully!');
       setNotificationType('success');
       setShowNotification(true);
-      fetchData();
     } catch (error) {
-      setNotificationMessage('Failed to import data');
+      console.error('Import error:', error);
+      setNotificationMessage(error instanceof Error ? error.message : 'Failed to import data');
       setNotificationType('error');
       setShowNotification(true);
     } finally {
       setIsImporting(false);
-      // Reset the file input
       if (event.target) {
         event.target.value = '';
       }
@@ -606,30 +632,45 @@ export default function App() {
   };
 
   const handleExport = async () => {
+    setIsExporting(true);
     try {
+      console.log('Sending export request to:', `${API_URL}/export-excel`);
       const response = await fetch(`${API_URL}/export-excel`);
+      
+      console.log('Export response status:', response.status);
+      
       if (!response.ok) {
-        throw new Error('Failed to export data');
+        const errorText = await response.text();
+        console.error('Export error:', errorText);
+        throw new Error(`Export failed: ${errorText}`);
       }
 
+      // Get the filename from the Content-Disposition header or use a default
+      const contentDisposition = response.headers.get('Content-Disposition');
+      const filenameMatch = contentDisposition && contentDisposition.match(/filename="?([^"]*)"?/);
+      const filename = filenameMatch ? filenameMatch[1] : 'products.xlsx';
+
+      // Create a blob from the response and trigger download
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'products.xlsx';
-      document.body.appendChild(a);
-      a.click();
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
 
-      setNotificationMessage('Data exported successfully');
+      setNotificationMessage('Data exported successfully!');
       setNotificationType('success');
       setShowNotification(true);
     } catch (error) {
-      console.error('Error exporting data:', error);
-      setNotificationMessage('Failed to export data');
+      console.error('Export error:', error);
+      setNotificationMessage(error instanceof Error ? error.message : 'Failed to export data');
       setNotificationType('error');
       setShowNotification(true);
+    } finally {
+      setIsExporting(false);
     }
   };
 
@@ -713,35 +754,52 @@ export default function App() {
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
               </svg>
-              <span className="text-xs">Importing...</span>
+              <span>Importing...</span>
             </>
           ) : (
             <>
               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
                 <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 6.707a1 1 0 010-1.414l3-3a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L11 5.414V13a1 1 0 11-2 0V5.414L7.707 6.707a1 1 0 01-1.414 0z" clipRule="evenodd" />
               </svg>
-              <span className="text-xs">Import Excel</span>
+              <span>Import Excel</span>
             </>
           )}
         </label>
       </div>
       <button
         onClick={handleExport}
+        disabled={isExporting}
         className={`px-3 py-1.5 rounded-lg text-sm ${
           isDarkMode
-            ? 'bg-green-600 hover:bg-green-700'
-            : 'bg-green-500 hover:bg-green-600'
+            ? isExporting
+              ? 'bg-green-400 cursor-not-allowed'
+              : 'bg-green-600 hover:bg-green-700'
+            : isExporting
+              ? 'bg-green-300 cursor-not-allowed'
+              : 'bg-green-500 hover:bg-green-600'
         } text-white flex items-center gap-1.5`}
       >
-        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-          <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM13.707 6.707a1 1 0 010-1.414l-3-3a1 1 0 00-1.414 0l-3 3a1 1 0 001.414 1.414L9 5.414V13a1 1 0 102 0V5.414l1.293 1.293a1 1 0 001.414 0z" clipRule="evenodd" />
-        </svg>
-        <span className="text-xs">Export Excel</span>
+        {isExporting ? (
+          <>
+            <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <span>Exporting...</span>
+          </>
+        ) : (
+          <>
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM13.707 6.707a1 1 0 010-1.414l-3-3a1 1 0 00-1.414 0l-3 3a1 1 0 001.414 1.414L9 5.414V13a1 1 0 102 0V5.414l1.293 1.293a1 1 0 001.414 0z" clipRule="evenodd" />
+            </svg>
+            <span>Export Excel</span>
+          </>
+        )}
       </button>
     </div>
   );
 
-  const getPaginationButtons = (currentPage: number, totalPages: number, type: 'products' | 'categories' | 'brands') => {
+  const getPaginationButtons = (currentPage: number, totalPages: number, type: string) => {
     const buttons = [];
     
     // Always show first page
@@ -805,7 +863,7 @@ export default function App() {
   };
 
   // Add AlphabeticalFilter component
-  const AlphabeticalFilter = ({ type }: { type: 'products' | 'categories' | 'brands' }) => {
+  const AlphabeticalFilter = ({ type }: { type: string }) => {
     const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
     
     return (
@@ -841,14 +899,14 @@ export default function App() {
     );
   };
 
-  // Add CategoryFilter component
-  const CategoryFilter = () => {
+  // Update CategoryFilter with proper types
+  const CategoryFilter: React.FC = () => {
     return (
       <div className="flex items-center space-x-2">
         <span className="text-sm">Category:</span>
         <select
           value={categoryFilter || ''}
-          onChange={(e) => setCategoryFilter(e.target.value ? Number(e.target.value) : null)}
+          onChange={(e: ChangeEvent<HTMLSelectElement>) => setCategoryFilter(e.target.value ? Number(e.target.value) : null)}
           className={`border rounded-lg p-2 text-sm ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'}`}
         >
           <option value="">All Categories</option>
@@ -862,9 +920,446 @@ export default function App() {
     );
   };
 
+  // Add pagination limit selector component
+  const PaginationLimitSelector = ({ type, value, onChange }: { type: string; value: number; onChange: (value: number) => void }) => (
+    <div className="flex items-center space-x-2">
+      <span className="text-sm">Show:</span>
+      <select
+        value={value}
+        onChange={(e) => onChange(Number(e.target.value))}
+        className={`border rounded-lg p-2 text-sm ${
+          isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'
+        }`}
+      >
+        {itemsPerPageOptions.map(option => (
+          <option key={option} value={option}>{option}</option>
+        ))}
+      </select>
+      <span className="text-sm">entries</span>
+    </div>
+  );
+
+  // Add view toggle component
+  const ViewToggle = () => (
+    <div className="flex items-center space-x-2">
+      <button
+        onClick={() => setViewMode('table')}
+        className={`p-2 rounded-lg ${
+          viewMode === 'table'
+            ? isDarkMode
+              ? 'bg-blue-600 text-white'
+              : 'bg-blue-500 text-white'
+            : isDarkMode
+              ? 'bg-gray-700 text-gray-300'
+              : 'bg-gray-100 text-gray-600'
+        }`}
+      >
+        📋 Table
+      </button>
+      <button
+        onClick={() => setViewMode('card')}
+        className={`p-2 rounded-lg ${
+          viewMode === 'card'
+            ? isDarkMode
+              ? 'bg-blue-600 text-white'
+              : 'bg-blue-500 text-white'
+            : isDarkMode
+              ? 'bg-gray-700 text-gray-300'
+              : 'bg-gray-100 text-gray-600'
+        }`}
+      >
+        🗂️ Cards
+      </button>
+    </div>
+  );
+
+  // Add category view toggle component
+  const CategoryViewToggle = () => (
+    <div className="flex items-center space-x-2">
+      <button
+        onClick={() => setCategoryViewMode('table')}
+        className={`p-2 rounded-lg ${
+          categoryViewMode === 'table'
+            ? isDarkMode
+              ? 'bg-blue-600 text-white'
+              : 'bg-blue-500 text-white'
+            : isDarkMode
+              ? 'bg-gray-700 text-gray-300'
+              : 'bg-gray-100 text-gray-600'
+        }`}
+      >
+        📋 Table
+      </button>
+      <button
+        onClick={() => setCategoryViewMode('card')}
+        className={`p-2 rounded-lg ${
+          categoryViewMode === 'card'
+            ? isDarkMode
+              ? 'bg-blue-600 text-white'
+              : 'bg-blue-500 text-white'
+            : isDarkMode
+              ? 'bg-gray-700 text-gray-300'
+              : 'bg-gray-100 text-gray-600'
+        }`}
+      >
+        🗂️ Cards
+      </button>
+    </div>
+  );
+
+  // Add brand view toggle component
+  const BrandViewToggle = () => (
+    <div className="flex items-center space-x-2">
+      <button
+        onClick={() => setBrandViewMode('table')}
+        className={`p-2 rounded-lg ${
+          brandViewMode === 'table'
+            ? isDarkMode
+              ? 'bg-blue-600 text-white'
+              : 'bg-blue-500 text-white'
+            : isDarkMode
+              ? 'bg-gray-700 text-gray-300'
+              : 'bg-gray-100 text-gray-600'
+        }`}
+      >
+        📋 Table
+      </button>
+      <button
+        onClick={() => setBrandViewMode('card')}
+        className={`p-2 rounded-lg ${
+          brandViewMode === 'card'
+            ? isDarkMode
+              ? 'bg-blue-600 text-white'
+              : 'bg-blue-500 text-white'
+            : isDarkMode
+              ? 'bg-gray-700 text-gray-300'
+              : 'bg-gray-100 text-gray-600'
+        }`}
+      >
+        🗂️ Cards
+      </button>
+    </div>
+  );
+
   const handleLogout = () => {
     setIsAuthenticated(false);
     localStorage.removeItem('isAuthenticated');
+  };
+
+  // Render content based on current tab
+  const renderContent = () => {
+    switch (currentTab) {
+      case 'products':
+        return (
+          <>
+            <header className="flex justify-between items-center mb-8">
+              <h1 className="text-2xl font-bold">Products</h1>
+              <div className="flex items-center gap-4">
+                <button
+                  onClick={() => setIsDarkMode(!isDarkMode)}
+                  className={`p-2 rounded-lg ${
+                    isDarkMode ? 'bg-gray-800 hover:bg-gray-700' : 'bg-white hover:bg-gray-50'
+                  }`}
+                >
+                  {isDarkMode ? '☀️' : '🌙'}
+                </button>
+                <button
+                  onClick={() => setIsAddModalOpen(true)}
+                  className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+                >
+                  Add Product
+                </button>
+              </div>
+            </header>
+
+            <ImportExportButtons />
+
+            <div className="mb-6">
+              <div className="flex flex-wrap gap-4 mb-4">
+                <div className="flex-1">
+                  <input
+                    type="text"
+                    placeholder="Search products..."
+                    value={searchQuery}
+                    onChange={e => setSearchQuery(e.target.value)}
+                    className={`w-full px-4 py-2 rounded-lg ${
+                      isDarkMode 
+                        ? 'bg-gray-800 border-gray-700 text-white placeholder-gray-400' 
+                        : 'bg-white border-gray-200'
+                    } border`}
+                  />
+                </div>
+                <select
+                  value={categoryFilter || ''}
+                  onChange={e => setCategoryFilter(e.target.value ? Number(e.target.value) : null)}
+                  className={`px-4 py-2 rounded-lg ${
+                    isDarkMode 
+                      ? 'bg-gray-800 border-gray-700 text-white' 
+                      : 'bg-white border-gray-200'
+                  } border`}
+                >
+                  <option value="">All Categories</option>
+                  {categories.map(category => (
+                    <option key={category.id} value={category.id}>
+                      {category.name}
+                    </option>
+                  ))}
+                </select>
+                <ViewToggle />
+              </div>
+
+              <div className="flex justify-between items-center mb-4">
+                <PaginationLimitSelector
+                  type="products"
+                  value={productPagination.itemsPerPage}
+                  onChange={(value) => handleItemsPerPageChange(value, 'products')}
+                />
+                <div className="flex items-center gap-4">
+                  {getPaginationButtons(productPagination.currentPage, getTotalPages(filteredProducts.length, productPagination.itemsPerPage), 'products')}
+                </div>
+              </div>
+            </div>
+
+            {viewMode === 'table' ? (
+              <ProductList
+                products={paginateData(sortData(filteredProducts, productSortConfig), productPagination)}
+                onEdit={product => {
+                  setSelectedProduct(product);
+                  setIsUpdateModalOpen(true);
+                }}
+                onDelete={handleDeleteProduct}
+                isDarkMode={isDarkMode}
+              />
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {paginateData(sortData(filteredProducts, productSortConfig), productPagination).map(product => (
+                  <ProductCard
+                    key={product.id}
+                    product={product}
+                    onEdit={product => {
+                      setSelectedProduct(product);
+                      setIsUpdateModalOpen(true);
+                    }}
+                    onDelete={handleDeleteProduct}
+                    isDarkMode={isDarkMode}
+                  />
+                ))}
+              </div>
+            )}
+          </>
+        );
+
+      case 'categories':
+        return (
+          <>
+            <header className="flex justify-between items-center mb-8">
+              <h1 className="text-2xl font-bold">Categories</h1>
+              <div className="flex items-center gap-4">
+                <CategoryViewToggle />
+                <button
+                  onClick={() => setIsCategoryModalOpen(true)}
+                  className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+                >
+                  Add Category
+                </button>
+              </div>
+            </header>
+
+            <div className="mb-6">
+              <div className="flex flex-wrap gap-4 mb-4">
+                <div className="flex-1">
+                  <input
+                    type="text"
+                    placeholder="Search categories..."
+                    value={searchQuery}
+                    onChange={e => setSearchQuery(e.target.value)}
+                    className={`w-full px-4 py-2 rounded-lg ${
+                      isDarkMode 
+                        ? 'bg-gray-800 border-gray-700 text-white placeholder-gray-400' 
+                        : 'bg-white border-gray-200'
+                    } border`}
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-between items-center mb-4">
+                <PaginationLimitSelector
+                  type="categories"
+                  value={categoryPagination.itemsPerPage}
+                  onChange={(value) => handleItemsPerPageChange(value, 'categories')}
+                />
+                <div className="flex items-center gap-4">
+                  {getPaginationButtons(categoryPagination.currentPage, getTotalPages(filteredCategories.length, categoryPagination.itemsPerPage), 'categories')}
+                </div>
+              </div>
+            </div>
+
+            {categoryViewMode === 'table' ? (
+              <div className="bg-white rounded-lg shadow overflow-hidden">
+                <table className={`min-w-full rounded-lg shadow ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
+                  <thead className={isDarkMode ? 'bg-gray-700' : 'bg-gray-100'}>
+                    <tr>
+                      <th className="px-6 py-4 text-left text-sm font-semibold">No</th>
+                      <th className="px-6 py-4 text-left text-sm font-semibold">Name</th>
+                      <th className="px-6 py-4 text-left text-sm font-semibold">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {paginateData(sortData(filteredCategories, categorySortConfig), categoryPagination).map((category, index) => (
+                      <tr key={category.id} className={`border-t ${isDarkMode ? 'border-gray-700 hover:bg-gray-700/50' : 'border-gray-200 hover:bg-gray-50'}`}>
+                        <td className="px-6 py-4 text-sm">{((categoryPagination.currentPage - 1) * categoryPagination.itemsPerPage) + index + 1}</td>
+                        <td className="px-6 py-4 text-sm">{category.name}</td>
+                        <td className="px-6 py-4 text-sm">
+                          <button
+                            onClick={() => {
+                              setSelectedCategory(category);
+                              setIsCategoryModalOpen(true);
+                            }}
+                            className="text-blue-500 hover:text-blue-600 mr-4"
+                          >
+                            ✏️
+                          </button>
+                          <button
+                            onClick={() => handleDeleteCategory(category.id)}
+                            className="text-red-500 hover:text-red-600"
+                          >
+                            🗑️
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {paginateData(sortData(filteredCategories, categorySortConfig), categoryPagination).map(category => (
+                  <CategoryCard
+                    key={category.id}
+                    category={category}
+                    onEdit={(category) => {
+                      setSelectedCategory(category);
+                      setIsCategoryModalOpen(true);
+                    }}
+                    onDelete={handleDeleteCategory}
+                    isDarkMode={isDarkMode}
+                    productsCount={products.filter(p => p.categoryId === category.id).length}
+                  />
+                ))}
+              </div>
+            )}
+          </>
+        );
+
+      case 'brands':
+        return (
+          <>
+            <header className="flex justify-between items-center mb-8">
+              <h1 className="text-2xl font-bold">Brands</h1>
+              <div className="flex items-center gap-4">
+                <BrandViewToggle />
+                <button
+                  onClick={() => setIsBrandModalOpen(true)}
+                  className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+                >
+                  Add Brand
+                </button>
+              </div>
+            </header>
+
+            <div className="mb-6">
+              <div className="flex flex-wrap gap-4 mb-4">
+                <div className="flex-1">
+                  <input
+                    type="text"
+                    placeholder="Search brands..."
+                    value={searchQuery}
+                    onChange={e => setSearchQuery(e.target.value)}
+                    className={`w-full px-4 py-2 rounded-lg ${
+                      isDarkMode 
+                        ? 'bg-gray-800 border-gray-700 text-white placeholder-gray-400' 
+                        : 'bg-white border-gray-200'
+                    } border`}
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-between items-center mb-4">
+                <PaginationLimitSelector
+                  type="brands"
+                  value={brandPagination.itemsPerPage}
+                  onChange={(value) => handleItemsPerPageChange(value, 'brands')}
+                />
+                <div className="flex items-center gap-4">
+                  {getPaginationButtons(brandPagination.currentPage, getTotalPages(filteredBrands.length, brandPagination.itemsPerPage), 'brands')}
+                </div>
+              </div>
+            </div>
+
+            {brandViewMode === 'table' ? (
+              <div className="bg-white rounded-lg shadow overflow-hidden">
+                <table className={`min-w-full rounded-lg shadow ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
+                  <thead className={isDarkMode ? 'bg-gray-700' : 'bg-gray-100'}>
+                    <tr>
+                      <th className="px-6 py-4 text-left text-sm font-semibold">No</th>
+                      <th className="px-6 py-4 text-left text-sm font-semibold">Name</th>
+                      <th className="px-6 py-4 text-left text-sm font-semibold">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {paginateData(sortData(filteredBrands, brandSortConfig), brandPagination).map((brand, index) => (
+                      <tr key={brand.id} className={`border-t ${isDarkMode ? 'border-gray-700 hover:bg-gray-700/50' : 'border-gray-200 hover:bg-gray-50'}`}>
+                        <td className="px-6 py-4 text-sm">{((brandPagination.currentPage - 1) * brandPagination.itemsPerPage) + index + 1}</td>
+                        <td className="px-6 py-4 text-sm">{brand.name}</td>
+                        <td className="px-6 py-4 text-sm">
+                          <button
+                            onClick={() => {
+                              setSelectedBrand(brand);
+                              setIsBrandModalOpen(true);
+                            }}
+                            className="text-blue-500 hover:text-blue-600 mr-4"
+                          >
+                            ✏️
+                          </button>
+                          <button
+                            onClick={() => handleDeleteBrand(brand.id)}
+                            className="text-red-500 hover:text-red-600"
+                          >
+                            🗑️
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {paginateData(sortData(filteredBrands, brandSortConfig), brandPagination).map(brand => (
+                  <BrandCard
+                    key={brand.id}
+                    brand={brand}
+                    onEdit={(brand) => {
+                      setSelectedBrand(brand);
+                      setIsBrandModalOpen(true);
+                    }}
+                    onDelete={handleDeleteBrand}
+                    isDarkMode={isDarkMode}
+                    productsCount={products.filter(p => p.brandId === brand.id).length}
+                  />
+                ))}
+              </div>
+            )}
+          </>
+        );
+
+      default:
+        return (
+          <div className="flex items-center justify-center h-full">
+            <p className="text-lg text-gray-500">Coming soon...</p>
+          </div>
+        );
+    }
   };
 
   // If not authenticated, show login page
@@ -874,823 +1369,350 @@ export default function App() {
 
   return (
     <div className={`min-h-screen ${isDarkMode ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-900'}`}>
-      {!isAuthenticated ? (
-        <Login onLogin={() => setIsAuthenticated(true)} isDarkMode={isDarkMode} />
-      ) : (
-        <>
-          {/* Header */}
-          <header className={`flex justify-between items-center p-4 ${isDarkMode ? 'bg-gray-800' : 'bg-gray-800'} text-white`}>
-            <h1 className="text-xl font-bold">Motora</h1>
-            <div className="flex items-center space-x-4">
+      <div className="flex">
+        <Sidebar currentTab={currentTab} setCurrentTab={setCurrentTab} isDarkMode={isDarkMode} />
+        
+        <div className="ml-20 w-full p-8">
+          {renderContent()}
+        </div>
+      </div>
+
+      {/* Category Modal */}
+      {isCategoryModalOpen && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+          <div className={`rounded-lg p-6 w-96 ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
+            <h2 className="text-2xl font-bold mb-6">
+              {selectedCategory ? 'Edit Category' : 'Add New Category'}
+            </h2>
+            <div className="space-y-4">
+              <div>
+                <label className={`block mb-2 text-sm ${isDarkMode ? 'text-white' : 'text-gray-700'}`}>Category Name:</label>
+                <input
+                  type="text"
+                  value={selectedCategory ? selectedCategory.name : newCategory.name}
+                  onChange={(e) => {
+                    if (selectedCategory) {
+                      setSelectedCategory({ ...selectedCategory, name: e.target.value });
+                    } else {
+                      setNewCategory({ name: e.target.value });
+                    }
+                  }}
+                  className={`border rounded-lg p-3 text-sm w-full ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' : 'bg-white border-gray-300'}`}
+                  placeholder="Enter category name"
+                />
+              </div>
+            </div>
+            <div className="flex justify-end space-x-4 mt-6">
               <button
-                onClick={handleLogout}
-                className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm"
+                onClick={() => {
+                  setIsCategoryModalOpen(false);
+                  setSelectedCategory(null);
+                  setNewCategory({ name: '' });
+                }}
+                className={`px-6 py-3 rounded-lg text-sm ${isDarkMode ? 'bg-gray-700 text-white hover:bg-gray-600' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
               >
-                Logout
+                Cancel
               </button>
               <button
-                onClick={() => setIsClearDataModalOpen(true)}
-                className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm"
+                onClick={selectedCategory ? handleUpdateCategory : handleAddCategory}
+                className="px-6 py-3 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700"
               >
-                Clear All Data
-              </button>
-              <button
-                onClick={() => setIsDarkMode(!isDarkMode)}
-                className={`px-3 py-1.5 rounded-lg text-sm ${isDarkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-600 hover:bg-gray-500'}`}
-              >
-                {isDarkMode ? '☀️ Light Mode' : '🌙 Dark Mode'}
+                {selectedCategory ? 'Save Changes' : 'Save'}
               </button>
             </div>
-          </header>
-          
-          {/* Navigation Tabs */}
-          <nav className={`flex space-x-4 p-4 ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border-b`}>
-            <button
-              className={`px-3 py-1.5 text-sm font-semibold ${currentTab === 'products' ? 'text-blue-500 border-b-2 border-blue-500' : isDarkMode ? 'text-gray-300 hover:text-white' : 'text-gray-600'}`}
-              onClick={() => setCurrentTab('products')}
-            >
-              Products
-            </button>
-            <button
-              className={`px-3 py-1.5 text-sm font-semibold ${currentTab === 'categories' ? 'text-blue-500 border-b-2 border-blue-500' : isDarkMode ? 'text-gray-300 hover:text-white' : 'text-gray-600'}`}
-              onClick={() => setCurrentTab('categories')}
-            >
-              Categories
-            </button>
-            <button
-              className={`px-3 py-1.5 text-sm font-semibold ${currentTab === 'brands' ? 'text-blue-500 border-b-2 border-blue-500' : isDarkMode ? 'text-gray-300 hover:text-white' : 'text-gray-600'}`}
-              onClick={() => setCurrentTab('brands')}
-            >
-              Brands
-            </button>
-          </nav>
-
-          <main className="p-4">
-            {currentTab === 'products' && (
-              <div className="space-y-6">
-                {/* Summary Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-                  <div className={`p-4 rounded-lg shadow ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
-                    <h3 className="text-sm font-semibold mb-1">Total Products</h3>
-                    <p className="text-lg">{products.length} Products</p>
-                  </div>
-                  <div className={`p-4 rounded-lg shadow ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
-                    <h3 className="text-sm font-semibold mb-1">Total Stock</h3>
-                    <p className="text-lg">{products.reduce((sum, product) => sum + product.currentStock, 0)} Items</p>
-                  </div>
-                  <div className={`p-4 rounded-lg shadow ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
-                    <h3 className="text-sm font-semibold mb-1">Low Stock Items</h3>
-                    <p className="text-lg text-red-500">
-                      {products.filter(p => p.currentStock <= p.minThreshold).length} Products
-                    </p>
-                  </div>
-                  <div className={`p-4 rounded-lg shadow ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
-                    <h3 className="text-sm font-semibold mb-1">Total Harga Beli</h3>
-                    <p className="text-lg text-blue-500">
-                      Rp {products.reduce((sum, product) => sum + (product.hargaBeli || 0), 0).toLocaleString()}
-                    </p>
-                  </div>
-                  <div className={`p-4 rounded-lg shadow ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
-                    <h3 className="text-sm font-semibold mb-1">Total Harga Jual</h3>
-                    <p className="text-lg text-green-500">
-                      Rp {products.reduce((sum, product) => sum + (product.hargaJual || 0), 0).toLocaleString()}
-                    </p>
-                  </div>
-                </div>
-                
-                {/* Search, Category Filter and Add Button */}
-                <div className="flex flex-wrap gap-4 justify-between items-center">
-                  <div className="flex flex-wrap gap-4 items-center">
-                    <input
-                      type="text"
-                      placeholder="Search products..."
-                      value={searchQuery}
-                      onChange={e => setSearchQuery(e.target.value)}
-                      className={`border rounded-lg p-2 text-sm w-64 ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'}`}
-                    />
-                    <CategoryFilter />
-                  </div>
-                  <button
-                    onClick={() => setIsAddModalOpen(true)}
-                    className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700"
-                  >
-                    Add New Product
-                  </button>
-                </div>
-
-                {/* Products Table */}
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center">
-                    <div className="flex items-center space-x-4">
-                      <span className="text-sm">Items per page:</span>
-                      <select
-                        value={productPagination.itemsPerPage}
-                        onChange={(e) => handleItemsPerPageChange(Number(e.target.value), 'products')}
-                        className={`border rounded-lg p-2 text-sm ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'}`}
-                      >
-                        <option value={5}>5</option>
-                        <option value={10}>10</option>
-                        <option value={20}>20</option>
-                        <option value={50}>50</option>
-                      </select>
-                    </div>
-                  </div>
-                  <div className="overflow-x-auto">
-                    <table className={`min-w-full rounded-lg shadow ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
-                      <thead className={isDarkMode ? 'bg-gray-700' : 'bg-gray-100'}>
-                        <tr>
-                          <th className="px-4 py-2 text-left text-sm font-semibold">No</th>
-                          <th 
-                            className="px-4 py-2 text-left text-sm font-semibold cursor-pointer hover:bg-gray-200"
-                            onClick={() => requestSort('Category.name', 'products')}
-                          >
-                            Category {getSortIcon('Category.name', 'products')}
-                          </th>
-                          <th 
-                            className="px-4 py-2 text-left text-sm font-semibold cursor-pointer hover:bg-gray-200"
-                            onClick={() => requestSort('Brand.name', 'products')}
-                          >
-                            Brand {getSortIcon('Brand.name', 'products')}
-                          </th>
-                          <th 
-                            className="px-4 py-2 text-left text-sm font-semibold cursor-pointer hover:bg-gray-200"
-                            onClick={() => requestSort('tipeMotor', 'products')}
-                          >
-                            Tipe Motor {getSortIcon('tipeMotor', 'products')}
-                          </th>
-                          <th 
-                            className="px-4 py-2 text-left text-sm font-semibold cursor-pointer hover:bg-gray-200"
-                            onClick={() => requestSort('tipeSize', 'products')}
-                          >
-                            Tipe/Size {getSortIcon('tipeSize', 'products')}
-                          </th>
-                          <th 
-                            className="px-4 py-2 text-left text-sm font-semibold cursor-pointer hover:bg-gray-200"
-                            onClick={() => requestSort('currentStock', 'products')}
-                          >
-                            Stock {getSortIcon('currentStock', 'products')}
-                          </th>
-                          <th 
-                            className="px-4 py-2 text-left text-sm font-semibold cursor-pointer hover:bg-gray-200"
-                            onClick={() => requestSort('minThreshold', 'products')}
-                          >
-                            Min Stock {getSortIcon('minThreshold', 'products')}
-                          </th>
-                          <th 
-                            className="px-4 py-2 text-left text-sm font-semibold cursor-pointer hover:bg-gray-200"
-                            onClick={() => requestSort('hargaBeli', 'products')}
-                          >
-                            Harga Beli {getSortIcon('hargaBeli', 'products')}
-                          </th>
-                          <th 
-                            className="px-4 py-2 text-left text-sm font-semibold cursor-pointer hover:bg-gray-200"
-                            onClick={() => requestSort('hargaJual', 'products')}
-                          >
-                            Harga Jual {getSortIcon('hargaJual', 'products')}
-                          </th>
-                          <th 
-                            className="px-4 py-2 text-left text-sm font-semibold cursor-pointer hover:bg-gray-200"
-                            onClick={() => requestSort('note', 'products')}
-                          >
-                            Note {getSortIcon('note', 'products')}
-                          </th>
-                          <th className="px-4 py-2 text-left text-sm font-semibold">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {paginateData(sortData(filteredProducts, productSortConfig), productPagination).map((product, index) => (
-                          <tr key={product.id} className={`border-t ${isDarkMode ? 'border-gray-700' : 'border-gray-200'} ${product.currentStock <= product.minThreshold ? isDarkMode ? 'bg-red-900/20' : 'bg-red-50' : ''}`}>
-                            <td className="px-4 py-2 text-sm">{index + 1}</td>
-                            <td className="px-4 py-2 text-sm">{product.Category?.name}</td>
-                            <td className="px-4 py-2 text-sm">{product.Brand?.name}</td>
-                            <td className="px-4 py-2 text-sm">{product.tipeMotor}</td>
-                            <td className="px-4 py-2 text-sm">{product.tipeSize}</td>
-                            <td className={`px-4 py-2 text-sm font-semibold ${product.currentStock <= product.minThreshold ? 'text-red-500' : 'text-green-500'}`}>
-                              {product.currentStock}
-                            </td>
-                            <td className="px-4 py-2 text-sm">{product.minThreshold}</td>
-                            <td className="px-4 py-2 text-sm">Rp {product.hargaBeli?.toLocaleString()}</td>
-                            <td className="px-4 py-2 text-sm">Rp {product.hargaJual?.toLocaleString()}</td>
-                            <td className="px-4 py-2 text-sm">{product.note}</td>
-                            <td className="px-4 py-2 text-sm">
-                              <button
-                                onClick={() => {
-                                  setSelectedProduct(product);
-                                  setIsUpdateModalOpen(true);
-                                }}
-                                className="text-blue-500 hover:text-blue-600 mr-4"
-                                title="Edit"
-                              >
-                                ✏️
-                              </button>
-                              <button
-                                onClick={() => handleDeleteProduct(product.id)}
-                                className="text-red-500 hover:text-red-600"
-                                title="Delete"
-                              >
-                                🗑️
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                  <div className="flex justify-between items-center text-sm">
-                    <div>
-                      Showing {((productPagination.currentPage - 1) * productPagination.itemsPerPage) + 1} to{' '}
-                      {Math.min(productPagination.currentPage * productPagination.itemsPerPage, filteredProducts.length)} of{' '}
-                      {filteredProducts.length} entries
-                    </div>
-                    <div className="flex space-x-2">
-                      <button
-                        onClick={() => handlePageChange(productPagination.currentPage - 1, 'products')}
-                        disabled={productPagination.currentPage === 1}
-                        className="px-2 py-1 border rounded text-sm disabled:opacity-50"
-                      >
-                        Previous
-                      </button>
-                      {getPaginationButtons(productPagination.currentPage, getTotalPages(filteredProducts.length, productPagination.itemsPerPage), 'products')}
-                      <button
-                        onClick={() => handlePageChange(productPagination.currentPage + 1, 'products')}
-                        disabled={productPagination.currentPage === getTotalPages(filteredProducts.length, productPagination.itemsPerPage)}
-                        className="px-2 py-1 border rounded text-sm disabled:opacity-50"
-                      >
-                        Next
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {currentTab === 'categories' && (
-              <div className="space-y-8">
-                <div className="flex justify-between items-center">
-                  <h2 className="text-xl font-bold">Categories</h2>
-                  <button
-                    onClick={() => setIsCategoryModalOpen(true)}
-                    className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-                  >
-                    Add New Category
-                  </button>
-                </div>
-
-                {/* Add Alphabetical Filter */}
-                <AlphabeticalFilter type="categories" />
-
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center">
-                    <div className="flex items-center space-x-4">
-                      <span>Items per page:</span>
-                      <select
-                        value={categoryPagination.itemsPerPage}
-                        onChange={(e) => handleItemsPerPageChange(Number(e.target.value), 'categories')}
-                        className={`border rounded-lg p-2 text-sm ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'}`}
-                      >
-                        <option value={5} className={isDarkMode ? 'bg-gray-700 text-white' : ''}>5</option>
-                        <option value={10} className={isDarkMode ? 'bg-gray-700 text-white' : ''}>10</option>
-                        <option value={20} className={isDarkMode ? 'bg-gray-700 text-white' : ''}>20</option>
-                        <option value={50} className={isDarkMode ? 'bg-gray-700 text-white' : ''}>50</option>
-                      </select>
-                    </div>
-                  </div>
-                  <div className="bg-white rounded-lg shadow overflow-hidden">
-                    <table className={`min-w-full rounded-lg shadow ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
-                      <thead className={isDarkMode ? 'bg-gray-700' : 'bg-gray-100'}>
-                        <tr>
-                          <th className="px-6 py-4 text-left text-sm font-semibold">No</th>
-                          <th 
-                            className="px-6 py-4 text-left text-sm font-semibold cursor-pointer hover:bg-gray-200"
-                            onClick={() => requestSort('name', 'categories')}
-                          >
-                            Category Name {getSortIcon('name', 'categories')}
-                          </th>
-                          <th className="px-6 py-4 text-left text-sm font-semibold">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {paginateData(sortData(filteredCategories, categorySortConfig), categoryPagination).map((category, index) => (
-                          <tr key={category.id} className={`border-t ${isDarkMode ? 'border-gray-700 hover:bg-gray-700/50' : 'border-gray-200 hover:bg-gray-50'}`}>
-                            <td className="px-6 py-4 text-sm">{((categoryPagination.currentPage - 1) * categoryPagination.itemsPerPage) + index + 1}</td>
-                            <td className="px-6 py-4 text-sm">{category.name}</td>
-                            <td className="px-6 py-4 text-sm">
-                              <button
-                                onClick={() => {
-                                  setSelectedCategory(category);
-                                  setIsCategoryModalOpen(true);
-                                }}
-                                className="text-blue-500 hover:text-blue-600 mr-4"
-                                title="Edit"
-                              >
-                                ✏️
-                              </button>
-                              <button
-                                onClick={() => handleDeleteCategory(category.id)}
-                                className="text-red-500 hover:text-red-600"
-                                title="Delete"
-                              >
-                                🗑️
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <div>
-                      Showing {((categoryPagination.currentPage - 1) * categoryPagination.itemsPerPage) + 1} to{' '}
-                      {Math.min(categoryPagination.currentPage * categoryPagination.itemsPerPage, filteredCategories.length)} of{' '}
-                      {filteredCategories.length} entries
-                    </div>
-                    <div className="flex space-x-2">
-                      <button
-                        onClick={() => handlePageChange(categoryPagination.currentPage - 1, 'categories')}
-                        disabled={categoryPagination.currentPage === 1}
-                        className="px-3 py-1 border rounded disabled:opacity-50"
-                      >
-                        Previous
-                      </button>
-                      {getPaginationButtons(categoryPagination.currentPage, getTotalPages(filteredCategories.length, categoryPagination.itemsPerPage), 'categories')}
-                      <button
-                        onClick={() => handlePageChange(categoryPagination.currentPage + 1, 'categories')}
-                        disabled={categoryPagination.currentPage === getTotalPages(filteredCategories.length, categoryPagination.itemsPerPage)}
-                        className="px-3 py-1 border rounded disabled:opacity-50"
-                      >
-                        Next
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {currentTab === 'brands' && (
-              <div className="space-y-8">
-                <div className="flex justify-between items-center">
-                  <h2 className="text-xl font-bold">Brands</h2>
-                  <button
-                    onClick={() => setIsBrandModalOpen(true)}
-                    className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-                  >
-                    Add New Brand
-                  </button>
-                </div>
-
-                {/* Add Alphabetical Filter */}
-                <AlphabeticalFilter type="brands" />
-
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center">
-                    <div className="flex items-center space-x-4">
-                      <span>Items per page:</span>
-                      <select
-                        value={brandPagination.itemsPerPage}
-                        onChange={(e) => handleItemsPerPageChange(Number(e.target.value), 'brands')}
-                        className={`border rounded-lg p-2 text-sm ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'}`}
-                      >
-                        <option value={5} className={isDarkMode ? 'bg-gray-700 text-white' : ''}>5</option>
-                        <option value={10} className={isDarkMode ? 'bg-gray-700 text-white' : ''}>10</option>
-                        <option value={20} className={isDarkMode ? 'bg-gray-700 text-white' : ''}>20</option>
-                        <option value={50} className={isDarkMode ? 'bg-gray-700 text-white' : ''}>50</option>
-                      </select>
-                    </div>
-                  </div>
-                  <div className="bg-white rounded-lg shadow overflow-hidden">
-                    <table className={`min-w-full rounded-lg shadow ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
-                      <thead className={isDarkMode ? 'bg-gray-700' : 'bg-gray-100'}>
-                        <tr>
-                          <th className="px-6 py-4 text-left text-sm font-semibold">No</th>
-                          <th 
-                            className="px-6 py-4 text-left text-sm font-semibold cursor-pointer hover:bg-gray-200"
-                            onClick={() => requestSort('name', 'brands')}
-                          >
-                            Brand Name {getSortIcon('name', 'brands')}
-                          </th>
-                          <th className="px-6 py-4 text-left text-sm font-semibold">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {paginateData(sortData(filteredBrands, brandSortConfig), brandPagination).map((brand, index) => (
-                          <tr key={brand.id} className={`border-t ${isDarkMode ? 'border-gray-700 hover:bg-gray-700/50' : 'border-gray-200 hover:bg-gray-50'}`}>
-                            <td className="px-6 py-4 text-sm">{((brandPagination.currentPage - 1) * brandPagination.itemsPerPage) + index + 1}</td>
-                            <td className="px-6 py-4 text-sm">{brand.name}</td>
-                            <td className="px-6 py-4 text-sm">
-                              <button
-                                onClick={() => {
-                                  setSelectedBrand(brand);
-                                  setIsBrandModalOpen(true);
-                                }}
-                                className="text-blue-500 hover:text-blue-600 mr-4"
-                                title="Edit"
-                              >
-                                ✏️
-                              </button>
-                              <button
-                                onClick={() => handleDeleteBrand(brand.id)}
-                                className="text-red-500 hover:text-red-600"
-                                title="Delete"
-                              >
-                                🗑️
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <div>
-                      Showing {((brandPagination.currentPage - 1) * brandPagination.itemsPerPage) + 1} to{' '}
-                      {Math.min(brandPagination.currentPage * brandPagination.itemsPerPage, filteredBrands.length)} of{' '}
-                      {filteredBrands.length} entries
-                    </div>
-                    <div className="flex space-x-2">
-                      <button
-                        onClick={() => handlePageChange(brandPagination.currentPage - 1, 'brands')}
-                        disabled={brandPagination.currentPage === 1}
-                        className="px-3 py-1 border rounded disabled:opacity-50"
-                      >
-                        Previous
-                      </button>
-                      {getPaginationButtons(brandPagination.currentPage, getTotalPages(filteredBrands.length, brandPagination.itemsPerPage), 'brands')}
-                      <button
-                        onClick={() => handlePageChange(brandPagination.currentPage + 1, 'brands')}
-                        disabled={brandPagination.currentPage === getTotalPages(filteredBrands.length, brandPagination.itemsPerPage)}
-                        className="px-3 py-1 border rounded disabled:opacity-50"
-                      >
-                        Next
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-          </main>
-
-          {/* Category Modal */}
-          {isCategoryModalOpen && (
-            <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
-              <div className={`rounded-lg p-6 w-96 ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
-                <h2 className="text-2xl font-bold mb-6">
-                  {selectedCategory ? 'Edit Category' : 'Add New Category'}
-                </h2>
-                <div className="space-y-4">
-                  <div>
-                    <label className={`block mb-2 text-sm ${isDarkMode ? 'text-white' : 'text-gray-700'}`}>Category Name:</label>
-                    <input
-                      type="text"
-                      value={selectedCategory ? selectedCategory.name : newCategory.name}
-                      onChange={(e) => {
-                        if (selectedCategory) {
-                          setSelectedCategory({ ...selectedCategory, name: e.target.value });
-                        } else {
-                          setNewCategory({ name: e.target.value });
-                        }
-                      }}
-                      className={`border rounded-lg p-3 text-sm w-full ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' : 'bg-white border-gray-300'}`}
-                      placeholder="Enter category name"
-                    />
-                  </div>
-                </div>
-                <div className="flex justify-end space-x-4 mt-6">
-                  <button
-                    onClick={() => {
-                      setIsCategoryModalOpen(false);
-                      setSelectedCategory(null);
-                      setNewCategory({ name: '' });
-                    }}
-                    className={`px-6 py-3 rounded-lg text-sm ${isDarkMode ? 'bg-gray-700 text-white hover:bg-gray-600' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={selectedCategory ? handleUpdateCategory : handleAddCategory}
-                    className="px-6 py-3 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700"
-                  >
-                    {selectedCategory ? 'Save Changes' : 'Save'}
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Brand Modal */}
-          {isBrandModalOpen && (
-            <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
-              <div className={`rounded-lg p-6 w-96 ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
-                <h2 className="text-2xl font-bold mb-6">
-                  {selectedBrand ? 'Edit Brand' : 'Add New Brand'}
-                </h2>
-                <div className="space-y-4">
-                  <div>
-                    <label className={`block mb-2 text-sm ${isDarkMode ? 'text-white' : 'text-gray-700'}`}>Brand Name:</label>
-                    <input
-                      type="text"
-                      value={selectedBrand ? selectedBrand.name : newBrand.name}
-                      onChange={(e) => {
-                        if (selectedBrand) {
-                          setSelectedBrand({ ...selectedBrand, name: e.target.value });
-                        } else {
-                          setNewBrand({ name: e.target.value });
-                        }
-                      }}
-                      className={`border rounded-lg p-3 text-sm w-full ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' : 'bg-white border-gray-300'}`}
-                      placeholder="Enter brand name"
-                    />
-                  </div>
-                </div>
-                <div className="flex justify-end space-x-4 mt-6">
-                  <button
-                    onClick={() => {
-                      setIsBrandModalOpen(false);
-                      setSelectedBrand(null);
-                      setNewBrand({ name: '' });
-                    }}
-                    className={`px-6 py-3 rounded-lg text-sm ${isDarkMode ? 'bg-gray-700 text-white hover:bg-gray-600' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={selectedBrand ? handleUpdateBrand : handleAddBrand}
-                    className="px-6 py-3 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700"
-                  >
-                    {selectedBrand ? 'Save Changes' : 'Save'}
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Add Product Modal */}
-          {isAddModalOpen && (
-            <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
-              <div className={`rounded-lg p-6 w-11/12 md:w-1/2 ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
-                <h2 className="text-2xl font-bold mb-4">Add New Product</h2>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block mb-1 text-sm">Category:</label>
-                    <select
-                      value={newProduct.categoryId}
-                      onChange={(e) => setNewProduct({ ...newProduct, categoryId: Number(e.target.value) })}
-                      className={`border rounded-lg p-3 text-sm w-full ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'}`}
-                    >
-                      <option value={0} className={isDarkMode ? 'bg-gray-700 text-white' : ''}>Select Category</option>
-                      {[...categories].sort((a, b) => a.name.localeCompare(b.name)).map(category => (
-                        <option key={category.id} value={category.id} className={isDarkMode ? 'bg-gray-700 text-white' : ''}>
-                          {category.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block mb-1 text-sm">Brand:</label>
-                    <select
-                      value={newProduct.brandId}
-                      onChange={(e) => setNewProduct({ ...newProduct, brandId: Number(e.target.value) })}
-                      className={`border rounded-lg p-3 text-sm w-full ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'}`}
-                    >
-                      <option value={0} className={isDarkMode ? 'bg-gray-700 text-white' : ''}>Select Brand</option>
-                      {[...brands].sort((a, b) => a.name.localeCompare(b.name)).map(brand => (
-                        <option key={brand.id} value={brand.id} className={isDarkMode ? 'bg-gray-700 text-white' : ''}>
-                          {brand.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block mb-1 text-sm">Tipe Motor:</label>
-                    <input
-                      type="text"
-                      value={newProduct.tipeMotor}
-                      onChange={(e) => setNewProduct({ ...newProduct, tipeMotor: e.target.value })}
-                      className={`border rounded-lg p-3 text-sm w-full ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' : 'bg-white border-gray-300'}`}
-                      placeholder="Enter tipe motor"
-                    />
-                  </div>
-                  <div>
-                    <label className="block mb-1 text-sm">Tipe/Size:</label>
-                    <input
-                      type="text"
-                      value={newProduct.tipeSize}
-                      onChange={(e) => setNewProduct({ ...newProduct, tipeSize: e.target.value })}
-                      className={`border rounded-lg p-3 text-sm w-full ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' : 'bg-white border-gray-300'}`}
-                      placeholder="Enter tipe size"
-                    />
-                  </div>
-                  <div>
-                    <label className="block mb-1 text-sm">Harga Beli:</label>
-                    <input
-                      type="number"
-                      value={newProduct.hargaBeli}
-                      onChange={(e) => setNewProduct({ ...newProduct, hargaBeli: Number(e.target.value) })}
-                      className={`border rounded-lg p-3 text-sm w-full ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' : 'bg-white border-gray-300'}`}
-                    />
-                  </div>
-                  <div>
-                    <label className="block mb-1 text-sm">Harga Jual:</label>
-                    <input
-                      type="number"
-                      value={newProduct.hargaJual}
-                      onChange={(e) => setNewProduct({ ...newProduct, hargaJual: Number(e.target.value) })}
-                      className={`border rounded-lg p-3 text-sm w-full ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' : 'bg-white border-gray-300'}`}
-                    />
-                  </div>
-                  <div>
-                    <label className="block mb-1 text-sm">Note:</label>
-                    <input
-                      type="text"
-                      value={newProduct.note}
-                      onChange={(e) => setNewProduct({ ...newProduct, note: e.target.value })}
-                      className={`border rounded-lg p-3 text-sm w-full ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'}`}
-                    />
-                  </div>
-                  <div>
-                    <label className="block mb-1 text-sm">Current Stock:</label>
-                    <input
-                      type="number"
-                      value={newProduct.currentStock}
-                      onChange={(e) => setNewProduct({ ...newProduct, currentStock: Number(e.target.value) })}
-                      className={`border rounded-lg p-3 text-sm w-full ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' : 'bg-white border-gray-300'}`}
-                    />
-                  </div>
-                  <div>
-                    <label className="block mb-1 text-sm">Min Stock Threshold:</label>
-                    <input
-                      type="number"
-                      value={newProduct.minThreshold}
-                      onChange={(e) => setNewProduct({ ...newProduct, minThreshold: Number(e.target.value) })}
-                      className={`border rounded-lg p-3 text-sm w-full ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' : 'bg-white border-gray-300'}`}
-                    />
-                  </div>
-                </div>
-                <div className="flex justify-end space-x-4 mt-6">
-                  <button
-                    onClick={() => setIsAddModalOpen(false)}
-                    className={`px-6 py-3 rounded-lg text-sm ${isDarkMode ? 'bg-gray-700 text-white hover:bg-gray-600' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={handleAddProduct}
-                    className="px-6 py-3 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700"
-                  >
-                    Save
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Update Product Modal */}
-          {isUpdateModalOpen && selectedProduct && (
-            <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
-              <div className={`rounded-lg p-6 w-11/12 md:w-1/2 ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
-                <h2 className="text-2xl font-bold mb-6">Edit Product</h2>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className={`block mb-2 text-sm ${isDarkMode ? 'text-white' : 'text-gray-700'}`}>Category:</label>
-                    <select
-                      value={selectedProduct.categoryId}
-                      onChange={(e) => setSelectedProduct({ ...selectedProduct, categoryId: Number(e.target.value) })}
-                      className={`border rounded-lg p-3 text-sm w-full ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'}`}
-                    >
-                      <option value={0} className={isDarkMode ? 'bg-gray-700 text-white' : ''}>Select Category</option>
-                      {[...categories].sort((a, b) => a.name.localeCompare(b.name)).map(category => (
-                        <option key={category.id} value={category.id} className={isDarkMode ? 'bg-gray-700 text-white' : ''}>
-                          {category.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className={`block mb-2 text-sm ${isDarkMode ? 'text-white' : 'text-gray-700'}`}>Brand:</label>
-                    <select
-                      value={selectedProduct.brandId}
-                      onChange={(e) => setSelectedProduct({ ...selectedProduct, brandId: Number(e.target.value) })}
-                      className={`border rounded-lg p-3 text-sm w-full ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'}`}
-                    >
-                      <option value={0} className={isDarkMode ? 'bg-gray-700 text-white' : ''}>Select Brand</option>
-                      {[...brands].sort((a, b) => a.name.localeCompare(b.name)).map(brand => (
-                        <option key={brand.id} value={brand.id} className={isDarkMode ? 'bg-gray-700 text-white' : ''}>
-                          {brand.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className={`block mb-2 text-sm ${isDarkMode ? 'text-white' : 'text-gray-700'}`}>Tipe Motor:</label>
-                    <input
-                      type="text"
-                      value={selectedProduct.tipeMotor || ''}
-                      onChange={(e) => setSelectedProduct({ ...selectedProduct, tipeMotor: e.target.value })}
-                      className={`border rounded-lg p-3 text-sm w-full ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'}`}
-                    />
-                  </div>
-                  <div>
-                    <label className={`block mb-2 text-sm ${isDarkMode ? 'text-white' : 'text-gray-700'}`}>Tipe/Size:</label>
-                    <input
-                      type="text"
-                      value={selectedProduct.tipeSize || ''}
-                      onChange={(e) => setSelectedProduct({ ...selectedProduct, tipeSize: e.target.value })}
-                      className={`border rounded-lg p-3 text-sm w-full ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'}`}
-                    />
-                  </div>
-                  <div>
-                    <label className={`block mb-2 text-sm ${isDarkMode ? 'text-white' : 'text-gray-700'}`}>Harga Beli:</label>
-                    <input
-                      type="number"
-                      value={selectedProduct.hargaBeli || 0}
-                      onChange={(e) => setSelectedProduct({ ...selectedProduct, hargaBeli: Number(e.target.value) })}
-                      className={`border rounded-lg p-3 text-sm w-full ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'}`}
-                    />
-                  </div>
-                  <div>
-                    <label className={`block mb-2 text-sm ${isDarkMode ? 'text-white' : 'text-gray-700'}`}>Harga Jual:</label>
-                    <input
-                      type="number"
-                      value={selectedProduct.hargaJual || 0}
-                      onChange={(e) => setSelectedProduct({ ...selectedProduct, hargaJual: Number(e.target.value) })}
-                      className={`border rounded-lg p-3 text-sm w-full ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'}`}
-                    />
-                  </div>
-                  <div>
-                    <label className={`block mb-2 text-sm ${isDarkMode ? 'text-white' : 'text-gray-700'}`}>Note:</label>
-                    <input
-                      type="text"
-                      value={selectedProduct.note || ''}
-                      onChange={(e) => setSelectedProduct({ ...selectedProduct, note: e.target.value })}
-                      className={`border rounded-lg p-3 text-sm w-full ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'}`}
-                    />
-                  </div>
-                  <div>
-                    <label className={`block mb-2 text-sm ${isDarkMode ? 'text-white' : 'text-gray-700'}`}>Current Stock:</label>
-                    <input
-                      type="number"
-                      value={selectedProduct.currentStock}
-                      onChange={(e) => setSelectedProduct({ ...selectedProduct, currentStock: Number(e.target.value) })}
-                      className={`border rounded-lg p-3 text-sm w-full ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'}`}
-                    />
-                  </div>
-                  <div>
-                    <label className={`block mb-2 text-sm ${isDarkMode ? 'text-white' : 'text-gray-700'}`}>Min Stock Threshold:</label>
-                    <input
-                      type="number"
-                      value={selectedProduct.minThreshold}
-                      onChange={(e) => setSelectedProduct({ ...selectedProduct, minThreshold: Number(e.target.value) })}
-                      className={`border rounded-lg p-3 text-sm w-full ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'}`}
-                    />
-                  </div>
-                </div>
-                <div className="flex justify-end space-x-4 mt-6">
-                  <button
-                    onClick={() => { setIsUpdateModalOpen(false); setSelectedProduct(null); }}
-                    className={`px-6 py-3 rounded-lg text-sm ${isDarkMode ? 'bg-gray-700 text-white hover:bg-gray-600' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={handleUpdateProduct}
-                    className="px-6 py-3 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700"
-                  >
-                    Save Changes
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          <ImportExportButtons />
-          <Notification />
-
-          {/* Clear Data Confirmation Modal */}
-          {isClearDataModalOpen && (
-            <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
-              <div className={`rounded-lg p-6 w-96 ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
-                <h2 className="text-2xl font-bold mb-4">Clear All Data</h2>
-                <p className="mb-6 text-sm">Are you sure you want to clear all data? This action cannot be undone.</p>
-                <div className="flex justify-end space-x-4">
-                  <button
-                    onClick={() => setIsClearDataModalOpen(false)}
-                    className={`px-4 py-2 rounded-lg ${
-                      isDarkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-200 hover:bg-gray-300'
-                    }`}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={handleClearData}
-                    className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg"
-                  >
-                    Clear Data
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-        </>
+          </div>
+        </div>
       )}
+
+      {/* Brand Modal */}
+      {isBrandModalOpen && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+          <div className={`rounded-lg p-6 w-96 ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
+            <h2 className="text-2xl font-bold mb-6">
+              {selectedBrand ? 'Edit Brand' : 'Add New Brand'}
+            </h2>
+            <div className="space-y-4">
+              <div>
+                <label className={`block mb-2 text-sm ${isDarkMode ? 'text-white' : 'text-gray-700'}`}>Brand Name:</label>
+                <input
+                  type="text"
+                  value={selectedBrand ? selectedBrand.name : newBrand.name}
+                  onChange={(e) => {
+                    if (selectedBrand) {
+                      setSelectedBrand({ ...selectedBrand, name: e.target.value });
+                    } else {
+                      setNewBrand({ name: e.target.value });
+                    }
+                  }}
+                  className={`border rounded-lg p-3 text-sm w-full ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' : 'bg-white border-gray-300'}`}
+                  placeholder="Enter brand name"
+                />
+              </div>
+            </div>
+            <div className="flex justify-end space-x-4 mt-6">
+              <button
+                onClick={() => {
+                  setIsBrandModalOpen(false);
+                  setSelectedBrand(null);
+                  setNewBrand({ name: '' });
+                }}
+                className={`px-6 py-3 rounded-lg text-sm ${isDarkMode ? 'bg-gray-700 text-white hover:bg-gray-600' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={selectedBrand ? handleUpdateBrand : handleAddBrand}
+                className="px-6 py-3 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700"
+              >
+                {selectedBrand ? 'Save Changes' : 'Save'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add Product Modal */}
+      {isAddModalOpen && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
+          <div className={`rounded-lg p-6 w-11/12 md:w-1/2 ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
+            <h2 className="text-2xl font-bold mb-4">Add New Product</h2>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block mb-1 text-sm">Category:</label>
+                <select
+                  value={newProduct.categoryId}
+                  onChange={(e) => setNewProduct({ ...newProduct, categoryId: Number(e.target.value) })}
+                  className={`border rounded-lg p-3 text-sm w-full ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'}`}
+                >
+                  <option value={0} className={isDarkMode ? 'bg-gray-700 text-white' : ''}>Select Category</option>
+                  {[...categories].sort((a, b) => a.name.localeCompare(b.name)).map(category => (
+                    <option key={category.id} value={category.id} className={isDarkMode ? 'bg-gray-700 text-white' : ''}>
+                      {category.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block mb-1 text-sm">Brand:</label>
+                <select
+                  value={newProduct.brandId}
+                  onChange={(e) => setNewProduct({ ...newProduct, brandId: Number(e.target.value) })}
+                  className={`border rounded-lg p-3 text-sm w-full ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'}`}
+                >
+                  <option value={0} className={isDarkMode ? 'bg-gray-700 text-white' : ''}>Select Brand</option>
+                  {[...brands].sort((a, b) => a.name.localeCompare(b.name)).map(brand => (
+                    <option key={brand.id} value={brand.id} className={isDarkMode ? 'bg-gray-700 text-white' : ''}>
+                      {brand.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block mb-1 text-sm">Tipe Motor:</label>
+                <input
+                  type="text"
+                  value={newProduct.tipeMotor}
+                  onChange={(e) => setNewProduct({ ...newProduct, tipeMotor: e.target.value })}
+                  className={`border rounded-lg p-3 text-sm w-full ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' : 'bg-white border-gray-300'}`}
+                  placeholder="Enter tipe motor"
+                />
+              </div>
+              <div>
+                <label className="block mb-1 text-sm">Tipe/Size:</label>
+                <input
+                  type="text"
+                  value={newProduct.tipeSize}
+                  onChange={(e) => setNewProduct({ ...newProduct, tipeSize: e.target.value })}
+                  className={`border rounded-lg p-3 text-sm w-full ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' : 'bg-white border-gray-300'}`}
+                  placeholder="Enter tipe size"
+                />
+              </div>
+              <div>
+                <label className="block mb-1 text-sm">Harga Beli:</label>
+                <input
+                  type="number"
+                  value={newProduct.hargaBeli}
+                  onChange={(e) => setNewProduct({ ...newProduct, hargaBeli: Number(e.target.value) })}
+                  className={`border rounded-lg p-3 text-sm w-full ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' : 'bg-white border-gray-300'}`}
+                />
+              </div>
+              <div>
+                <label className="block mb-1 text-sm">Harga Jual:</label>
+                <input
+                  type="number"
+                  value={newProduct.hargaJual}
+                  onChange={(e) => setNewProduct({ ...newProduct, hargaJual: Number(e.target.value) })}
+                  className={`border rounded-lg p-3 text-sm w-full ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'}`}
+                />
+              </div>
+              <div>
+                <label className="block mb-1 text-sm">Note:</label>
+                <input
+                  type="text"
+                  value={newProduct.note}
+                  onChange={(e) => setNewProduct({ ...newProduct, note: e.target.value })}
+                  className={`border rounded-lg p-3 text-sm w-full ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'}`}
+                />
+              </div>
+              <div>
+                <label className="block mb-1 text-sm">Current Stock:</label>
+                <input
+                  type="number"
+                  value={newProduct.currentStock}
+                  onChange={(e) => setNewProduct({ ...newProduct, currentStock: Number(e.target.value) })}
+                  className={`border rounded-lg p-3 text-sm w-full ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' : 'bg-white border-gray-300'}`}
+                />
+              </div>
+              <div>
+                <label className="block mb-1 text-sm">Min Stock Threshold:</label>
+                <input
+                  type="number"
+                  value={newProduct.minThreshold}
+                  onChange={(e) => setNewProduct({ ...newProduct, minThreshold: Number(e.target.value) })}
+                  className={`border rounded-lg p-3 text-sm w-full ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' : 'bg-white border-gray-300'}`}
+                />
+              </div>
+            </div>
+            <div className="flex justify-end space-x-4 mt-6">
+              <button
+                onClick={() => setIsAddModalOpen(false)}
+                className={`px-6 py-3 rounded-lg text-sm ${isDarkMode ? 'bg-gray-700 text-white hover:bg-gray-600' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleAddProduct}
+                className="px-6 py-3 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700"
+              >
+                Save
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Update Product Modal */}
+      {isUpdateModalOpen && selectedProduct && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+          <div className={`rounded-lg p-6 w-11/12 md:w-1/2 ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
+            <h2 className="text-2xl font-bold mb-6">Edit Product</h2>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className={`block mb-2 text-sm ${isDarkMode ? 'text-white' : 'text-gray-700'}`}>Category:</label>
+                <select
+                  value={selectedProduct.categoryId ?? 0}
+                  onChange={(e) => setSelectedProduct({ ...selectedProduct, categoryId: Number(e.target.value) })}
+                  className={`border rounded-lg p-3 text-sm w-full ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'}`}
+                >
+                  <option value={0} className={isDarkMode ? 'bg-gray-700 text-white' : ''}>Select Category</option>
+                  {[...categories].sort((a, b) => a.name.localeCompare(b.name)).map(category => (
+                    <option key={category.id} value={category.id} className={isDarkMode ? 'bg-gray-700 text-white' : ''}>
+                      {category.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className={`block mb-2 text-sm ${isDarkMode ? 'text-white' : 'text-gray-700'}`}>Brand:</label>
+                <select
+                  value={selectedProduct.brandId ?? 0}
+                  onChange={(e) => setSelectedProduct({ ...selectedProduct, brandId: Number(e.target.value) })}
+                  className={`border rounded-lg p-3 text-sm w-full ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'}`}
+                >
+                  <option value={0} className={isDarkMode ? 'bg-gray-700 text-white' : ''}>Select Brand</option>
+                  {[...brands].sort((a, b) => a.name.localeCompare(b.name)).map(brand => (
+                    <option key={brand.id} value={brand.id} className={isDarkMode ? 'bg-gray-700 text-white' : ''}>
+                      {brand.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className={`block mb-2 text-sm ${isDarkMode ? 'text-white' : 'text-gray-700'}`}>Tipe Motor:</label>
+                <input
+                  type="text"
+                  value={selectedProduct.tipeMotor || ''}
+                  onChange={(e) => setSelectedProduct({ ...selectedProduct, tipeMotor: e.target.value })}
+                  className={`border rounded-lg p-3 text-sm w-full ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'}`}
+                />
+              </div>
+              <div>
+                <label className={`block mb-2 text-sm ${isDarkMode ? 'text-white' : 'text-gray-700'}`}>Tipe/Size:</label>
+                <input
+                  type="text"
+                  value={selectedProduct.tipeSize || ''}
+                  onChange={(e) => setSelectedProduct({ ...selectedProduct, tipeSize: e.target.value })}
+                  className={`border rounded-lg p-3 text-sm w-full ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'}`}
+                />
+              </div>
+              <div>
+                <label className={`block mb-2 text-sm ${isDarkMode ? 'text-white' : 'text-gray-700'}`}>Harga Beli:</label>
+                <input
+                  type="number"
+                  value={selectedProduct.hargaBeli || ''}
+                  onChange={(e) => setSelectedProduct({ ...selectedProduct, hargaBeli: e.target.value ? Number(e.target.value) : null })}
+                  className={`border rounded-lg p-3 text-sm w-full ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'}`}
+                />
+              </div>
+              <div>
+                <label className={`block mb-2 text-sm ${isDarkMode ? 'text-white' : 'text-gray-700'}`}>Harga Jual:</label>
+                <input
+                  type="number"
+                  value={selectedProduct.hargaJual || ''}
+                  onChange={(e) => setSelectedProduct({ ...selectedProduct, hargaJual: e.target.value ? Number(e.target.value) : null })}
+                  className={`border rounded-lg p-3 text-sm w-full ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'}`}
+                />
+              </div>
+              <div>
+                <label className={`block mb-2 text-sm ${isDarkMode ? 'text-white' : 'text-gray-700'}`}>Note:</label>
+                <input
+                  type="text"
+                  value={selectedProduct.note || ''}
+                  onChange={(e) => setSelectedProduct({ ...selectedProduct, note: e.target.value })}
+                  className={`border rounded-lg p-3 text-sm w-full ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'}`}
+                />
+              </div>
+              <div>
+                <label className={`block mb-2 text-sm ${isDarkMode ? 'text-white' : 'text-gray-700'}`}>Current Stock:</label>
+                <input
+                  type="number"
+                  value={selectedProduct.currentStock || ''}
+                  onChange={(e) => setSelectedProduct({ ...selectedProduct, currentStock: e.target.value ? Number(e.target.value) : 0 })}
+                  className={`border rounded-lg p-3 text-sm w-full ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'}`}
+                />
+              </div>
+              <div>
+                <label className={`block mb-2 text-sm ${isDarkMode ? 'text-white' : 'text-gray-700'}`}>Min Stock Threshold:</label>
+                <input
+                  type="number"
+                  value={selectedProduct.minThreshold || ''}
+                  onChange={(e) => setSelectedProduct({ ...selectedProduct, minThreshold: e.target.value ? Number(e.target.value) : 0 })}
+                  className={`border rounded-lg p-3 text-sm w-full ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'}`}
+                />
+              </div>
+            </div>
+            <div className="flex justify-end space-x-4 mt-6">
+              <button
+                onClick={() => setIsUpdateModalOpen(false)}
+                className={`px-6 py-3 rounded-lg text-sm ${isDarkMode ? 'bg-gray-700 text-white hover:bg-gray-600' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleUpdateProduct}
+                className="px-6 py-3 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700"
+              >
+                Save Changes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Notification Component */}
+      <Notification />
     </div>
   );
 }
+
+export default App;
