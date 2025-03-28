@@ -1,10 +1,10 @@
 import { useState, useMemo } from 'react';
 import type { SortConfig } from '../types';
 
-export function useSort<T extends Record<string, any>>(
+const useProductSort = <T extends Record<string, any>>(
   items: T[],
   defaultConfig: SortConfig = { key: '', direction: 'asc' }
-) {
+) => {
   const [sortConfig, setSortConfig] = useState<SortConfig>(defaultConfig);
 
   const sortedItems = useMemo(() => {
@@ -23,21 +23,22 @@ export function useSort<T extends Record<string, any>>(
           : bValue.localeCompare(aValue);
       }
 
-      return sortConfig.direction === 'asc'
-        ? (aValue > bValue ? 1 : -1)
-        : (bValue > aValue ? 1 : -1);
+      if (typeof aValue === 'number' && typeof bValue === 'number') {
+        return sortConfig.direction === 'asc' ? aValue - bValue : bValue - aValue;
+      }
+
+      return 0;
     });
   }, [items, sortConfig]);
 
   const requestSort = (key: string) => {
-    setSortConfig((prevConfig: SortConfig) => ({
+    setSortConfig((currentConfig: SortConfig) => ({
       key,
-      direction:
-        prevConfig.key === key && prevConfig.direction === 'asc'
-          ? 'desc'
-          : 'asc',
+      direction: currentConfig.key === key && currentConfig.direction === 'asc' ? 'desc' : 'asc'
     }));
   };
 
   return { sortedItems, sortConfig, requestSort };
-} 
+};
+
+export default useProductSort; 

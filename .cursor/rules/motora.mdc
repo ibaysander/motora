@@ -6,3 +6,14 @@ alwaysApply: true
 
 1. this is a docker project, always check the package.json don't use npm install
 2. this is a Create React App project, not a Vite project
+
+Naming Conventions:
+- Use camelCase for variable and function names (e.g., `onClick`, `handleSubmit`).
+- Use PascalCase for component names in react and react native (e.g., `UserProfile`, `ChatScreen`).
+- Directory names should be lowercase and hyphenated (e.g., `user-profile`, `chat-screen`).
+- Avoid using ambiguous names for variables or components 
+
+UI and Styling:
+- Use consistent styling, either through `StyleSheet.create()` or Styled Components.
+- Ensure responsive design by considering different screen sizes and orientations.
+- Do not use inline styling. Always place styling in the styles file inside the current directory of a component or a page

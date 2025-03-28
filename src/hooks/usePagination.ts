@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import type { PaginationConfig } from '../types';
+import type { PaginationConfig } from '../features/products/types';
 
 export function usePagination<T>(
   items: T[],

@@ -3,7 +3,7 @@ import type { Product } from '../types';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
 
-export const useProducts = () => {
+const useProducts = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -89,9 +89,11 @@ export const useProducts = () => {
     products,
     loading,
     error,
-    fetchProducts,
+    refetch: fetchProducts,
     addProduct,
     updateProduct,
     deleteProduct,
   };
-}; 
+};
+
+export default useProducts; 

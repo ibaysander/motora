@@ -1,10 +1,8 @@
 import React, { useState, ChangeEvent, useEffect, FC } from 'react';
-import Login from './components/Login';
-import { Product, Category, Brand, SortConfig, PaginationConfig } from './types';
-import ProductList from './components/ProductList';
-import ProductCard from './components/ProductCard';
-import CategoryCard from './components/CategoryCard';
-import BrandCard from './components/BrandCard';
+import { Login } from './features/auth';
+import { ProductList, ProductCard, type Product, type SortConfig, type PaginationConfig } from './features/products';
+import { CategoryCard, type Category } from './features/categories';
+import { BrandCard, type Brand } from './features/brands';
 
 interface AppProps {
   currentTab: string;
@@ -27,6 +25,9 @@ interface SidebarProps {
   currentTab: 'products' | 'categories' | 'brands';
   setCurrentTab: (tab: 'products' | 'categories' | 'brands') => void;
   isDarkMode: boolean;
+  onLogout: () => void;
+  isExpanded: boolean;
+  setIsExpanded: (isExpanded: boolean) => void;
 }
 
 interface Tab {
@@ -41,18 +42,19 @@ const tabs: Tab[] = [
   { id: 'brands', icon: '🏢', label: 'Brands' }
 ];
 
-const Sidebar: React.FC<SidebarProps> = ({ currentTab, setCurrentTab, isDarkMode }) => {
+const Sidebar: React.FC<SidebarProps> = ({ currentTab, setCurrentTab, isDarkMode, onLogout, isExpanded, setIsExpanded }) => {
   return (
-    <div className={`w-20 min-h-screen fixed left-0 top-0 ${isDarkMode ? 'bg-gray-900' : 'bg-gray-100'} border-r ${isDarkMode ? 'border-gray-800' : 'border-gray-200'}`}>
-      <div className="flex flex-col items-center py-6">
-        <div className="mb-8">
+    <div className={`${isExpanded ? 'w-48' : 'w-20'} min-h-screen fixed ${isExpanded ? 'left-0' : '-left-20'} top-0 ${isDarkMode ? 'bg-gray-900' : 'bg-gray-100'} border-r ${isDarkMode ? 'border-gray-800' : 'border-gray-200'} flex flex-col justify-between py-6 transition-all duration-300 ease-in-out z-10`}>
+      <div className="flex flex-col items-center">
+        <div className="mb-8 flex items-center justify-center">
           <span className="text-2xl">🏍️</span>
         </div>
+        
         {tabs.map(tab => (
           <button
             key={tab.id}
             onClick={() => setCurrentTab(tab.id as 'products' | 'categories' | 'brands')}
-            className={`w-12 h-12 mb-4 rounded-xl flex items-center justify-center text-lg
+            className={`${isExpanded ? 'w-40 justify-start px-4' : 'w-12 justify-center'} h-12 mb-4 rounded-xl flex items-center text-lg transition-all duration-300 ease-in-out
               ${currentTab === tab.id 
                 ? isDarkMode 
                   ? 'bg-blue-600 text-white' 
@@ -63,11 +65,42 @@ const Sidebar: React.FC<SidebarProps> = ({ currentTab, setCurrentTab, isDarkMode
               }`}
             title={tab.label}
           >
-            {tab.icon}
+            <span>{tab.icon}</span>
+            {isExpanded && <span className="ml-3 text-sm opacity-100 transition-opacity duration-300">{tab.label}</span>}
           </button>
         ))}
       </div>
+      
+      {/* Logout button at the bottom of sidebar */}
+      <div className="flex flex-col items-center">
+        <button
+          onClick={onLogout}
+          className={`${isExpanded ? 'w-40 justify-start px-4' : 'w-12 justify-center'} h-12 rounded-xl flex items-center text-lg transition-all duration-300 ease-in-out
+            ${isDarkMode ? 'text-red-400 hover:bg-gray-800' : 'text-red-500 hover:bg-gray-200'}`}
+          title="Logout"
+        >
+          <span>🚪</span>
+          {isExpanded && <span className="ml-3 text-sm opacity-100 transition-opacity duration-300">Logout</span>}
+        </button>
+      </div>
     </div>
+  );
+};
+
+// Add a toggle button overlay that stays visible
+const SidebarToggle: React.FC<{isExpanded: boolean; setIsExpanded: (isExpanded: boolean) => void; isDarkMode: boolean}> = 
+  ({isExpanded, setIsExpanded, isDarkMode}) => {
+  return (
+    <button 
+      onClick={() => setIsExpanded(!isExpanded)}
+      className={`fixed top-4 ${isExpanded ? 'left-40' : 'left-4'} z-20 w-8 h-8 rounded-full flex items-center justify-center ${
+        isDarkMode 
+          ? 'bg-gray-800 text-gray-300 hover:bg-gray-700' 
+          : 'bg-white text-gray-700 hover:bg-gray-100'
+      } shadow-md transition-all duration-300 ease-in-out`}
+    >
+      {isExpanded ? '◀' : '▶'}
+    </button>
   );
 };
 
@@ -81,6 +114,11 @@ const App: FC = () => {
   const [isDarkMode, setIsDarkMode] = useState(() => {
     const savedMode = localStorage.getItem('darkMode');
     return savedMode === 'true';
+  });
+  const [isSidebarExpanded, setIsSidebarExpanded] = useState(() => {
+    // Initialize from localStorage
+    const savedState = localStorage.getItem('sidebarExpanded');
+    return savedState === 'true';
   });
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -159,6 +197,11 @@ const App: FC = () => {
       document.documentElement.classList.remove('dark');
     }
   }, [isDarkMode]);
+
+  // Save sidebar state to localStorage
+  useEffect(() => {
+    localStorage.setItem('sidebarExpanded', isSidebarExpanded.toString());
+  }, [isSidebarExpanded]);
 
   // Save pagination settings to localStorage whenever they change
   useEffect(() => {
@@ -534,7 +577,7 @@ const App: FC = () => {
     }
     
     if (config.key !== key) return '↕';
-    return config.direction === 'asc' ? '↑' : '↓';
+      return config.direction === 'asc' ? '↑' : '↓';
   };
 
   const paginateData = <T extends Record<string, any>>(
@@ -1210,7 +1253,7 @@ const App: FC = () => {
               <div className="flex justify-between items-center mb-4">
                 <PaginationLimitSelector
                   type="products"
-                  value={productPagination.itemsPerPage}
+                    value={productPagination.itemsPerPage}
                   onChange={(value) => handleItemsPerPageChange(value, 'products')}
                 />
                 {viewMode === 'card' && (
@@ -1257,12 +1300,12 @@ const App: FC = () => {
                         <option value="hargaJual:asc">Harga Jual (Low to High)</option>
                         <option value="hargaJual:desc">Harga Jual (High to Low)</option>
                       </optgroup>
-                    </select>
-                  </div>
+                  </select>
+                </div>
                 )}
                 <div className="flex items-center gap-4">
                   {getPaginationButtons(productPagination.currentPage, getTotalPages(filteredProducts.length, productPagination.itemsPerPage), 'products')}
-                </div>
+              </div>
               </div>
             </div>
 
@@ -1333,7 +1376,7 @@ const App: FC = () => {
               <div className="flex justify-between items-center mb-4">
                 <PaginationLimitSelector
                   type="categories"
-                  value={categoryPagination.itemsPerPage}
+                    value={categoryPagination.itemsPerPage}
                   onChange={(value) => handleItemsPerPageChange(value, 'categories')}
                 />
                 {categoryViewMode === 'card' && (
@@ -1358,12 +1401,12 @@ const App: FC = () => {
                         <option value="name:asc">Name (A-Z)</option>
                         <option value="name:desc">Name (Z-A)</option>
                       </optgroup>
-                    </select>
-                  </div>
+              </select>
+                </div>
                 )}
                 <div className="flex items-center gap-4">
                   {getPaginationButtons(categoryPagination.currentPage, getTotalPages(filteredCategories.length, categoryPagination.itemsPerPage), 'categories')}
-                </div>
+              </div>
               </div>
             </div>
 
@@ -1460,7 +1503,7 @@ const App: FC = () => {
               <div className="flex justify-between items-center mb-4">
                 <PaginationLimitSelector
                   type="brands"
-                  value={brandPagination.itemsPerPage}
+                    value={brandPagination.itemsPerPage}
                   onChange={(value) => handleItemsPerPageChange(value, 'brands')}
                 />
                 {brandViewMode === 'card' && (
@@ -1485,12 +1528,12 @@ const App: FC = () => {
                         <option value="name:asc">Name (A-Z)</option>
                         <option value="name:desc">Name (Z-A)</option>
                       </optgroup>
-                    </select>
-                  </div>
+              </select>
+            </div>
                 )}
                 <div className="flex items-center gap-4">
                   {getPaginationButtons(brandPagination.currentPage, getTotalPages(filteredBrands.length, brandPagination.itemsPerPage), 'brands')}
-                </div>
+              </div>
               </div>
             </div>
 
@@ -1567,13 +1610,25 @@ const App: FC = () => {
 
   return (
     <div className={`min-h-screen ${isDarkMode ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-900'}`}>
+      <SidebarToggle 
+        isExpanded={isSidebarExpanded} 
+        setIsExpanded={setIsSidebarExpanded} 
+        isDarkMode={isDarkMode}
+      />
       <div className="flex">
-        <Sidebar currentTab={currentTab} setCurrentTab={setCurrentTab} isDarkMode={isDarkMode} />
+        <Sidebar 
+          currentTab={currentTab} 
+          setCurrentTab={setCurrentTab} 
+          isDarkMode={isDarkMode} 
+          onLogout={handleLogout}
+          isExpanded={isSidebarExpanded}
+          setIsExpanded={setIsSidebarExpanded} 
+        />
         
-        <div className="ml-20 w-full p-8">
+        <div className={`${isSidebarExpanded ? 'ml-48' : 'ml-0'} w-full p-8 transition-all duration-300 ease-in-out`}>
           {renderContent()}
-              </div>
-            </div>
+        </div>
+      </div>
 
       {/* Category Modal */}
       {isCategoryModalOpen && (

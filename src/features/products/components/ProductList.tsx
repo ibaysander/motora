@@ -1,10 +1,5 @@
 import React from 'react';
-import { Product } from '../types';
-
-interface SortConfig {
-  key: string;
-  direction: 'asc' | 'desc';
-}
+import { Product, SortConfig } from '../types';
 
 interface ProductListProps {
   products: Product[];

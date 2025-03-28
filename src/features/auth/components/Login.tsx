@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { LoginCredentials } from '../types';
 
 interface LoginProps {
   onLogin: () => void;
@@ -6,8 +7,10 @@ interface LoginProps {
 }
 
 const Login: React.FC<LoginProps> = ({ onLogin, isDarkMode }) => {
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
+  const [credentials, setCredentials] = useState<LoginCredentials>({
+    username: '',
+    password: ''
+  });
   const [error, setError] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -15,7 +18,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, isDarkMode }) => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     // Hardcoded credentials for testing
-    if (username === 'admin' && password === 'password123') {
+    if (credentials.username === 'admin' && credentials.password === 'password123') {
       setError('');
       // Save remember me preference
       localStorage.setItem('rememberMe', JSON.stringify(rememberMe));
@@ -50,8 +53,8 @@ const Login: React.FC<LoginProps> = ({ onLogin, isDarkMode }) => {
                     : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500'
                 } rounded-t-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm`}
                 placeholder="Username"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
+                value={credentials.username}
+                onChange={(e) => setCredentials({ ...credentials, username: e.target.value })}
               />
             </div>
             <div className="relative">
@@ -69,8 +72,8 @@ const Login: React.FC<LoginProps> = ({ onLogin, isDarkMode }) => {
                     : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500'
                 } rounded-b-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm`}
                 placeholder="Password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                value={credentials.password}
+                onChange={(e) => setCredentials({ ...credentials, password: e.target.value })}
               />
               <button
                 type="button"
