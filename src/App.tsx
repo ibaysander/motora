@@ -448,53 +448,71 @@ const App: FC = () => {
     data: T[],
     config: SortConfig
   ): T[] => {
+    if (!config.key) return data;
+
     return [...data].sort((a, b) => {
       // Handle nested properties (e.g., 'category.name')
       const getValue = (obj: any, path: string) => {
-        return path.split('.').reduce((acc, part) => acc?.[part], obj);
+        const value = path.split('.').reduce((acc, part) => acc?.[part], obj);
+        return value === undefined || value === null ? null : value;
       };
 
       const aValue = getValue(a, config.key);
       const bValue = getValue(b, config.key);
 
+      // Handle null/undefined values - always sort them to the end
+      if (aValue === null && bValue === null) return 0;
       if (aValue === null) return 1;
       if (bValue === null) return -1;
-      if (aValue === undefined) return 1;
-      if (bValue === undefined) return -1;
-      
-      if (typeof aValue === 'string') {
-        return config.direction === 'asc'
-          ? aValue.localeCompare(bValue)
-          : bValue.localeCompare(aValue);
+
+      // Handle numeric values (including string numbers)
+      if (!isNaN(Number(aValue)) && !isNaN(Number(bValue))) {
+        const numA = Number(aValue);
+        const numB = Number(bValue);
+        return config.direction === 'asc' ? numA - numB : numB - numA;
       }
       
+      // Handle string values
+      if (typeof aValue === 'string' && typeof bValue === 'string') {
+        return config.direction === 'asc'
+          ? aValue.localeCompare(bValue, undefined, { numeric: true, sensitivity: 'base' })
+          : bValue.localeCompare(aValue, undefined, { numeric: true, sensitivity: 'base' });
+      }
+      
+      // Fallback for other types
       return config.direction === 'asc'
-        ? aValue - bValue
-        : bValue - aValue;
+        ? aValue > bValue ? 1 : -1
+        : bValue > aValue ? 1 : -1;
     });
   };
 
   const requestSort = (key: string, type: string) => {
-    let direction: 'asc' | 'desc' = 'asc';
+    let newConfig: SortConfig;
     
     switch (type) {
       case 'products':
-        if (productSortConfig.key === key && productSortConfig.direction === 'asc') {
-          direction = 'desc';
-        }
-        setProductSortConfig({ key, direction });
+        newConfig = productSortConfig.key === key
+          ? productSortConfig.direction === 'asc'
+            ? { key, direction: 'desc' }
+            : { key: '', direction: 'asc' }  // Reset sorting
+          : { key, direction: 'asc' };
+        setProductSortConfig(newConfig);
         break;
       case 'categories':
-        if (categorySortConfig.key === key && categorySortConfig.direction === 'asc') {
-          direction = 'desc';
-        }
-        setCategorySortConfig({ key, direction });
+        newConfig = categorySortConfig.key === key
+          ? categorySortConfig.direction === 'asc'
+            ? { key, direction: 'desc' }
+            : { key: '', direction: 'asc' }  // Reset sorting
+          : { key, direction: 'asc' };
+        setCategorySortConfig(newConfig);
         break;
       case 'brands':
-        if (brandSortConfig.key === key && brandSortConfig.direction === 'asc') {
-          direction = 'desc';
-        }
-        setBrandSortConfig({ key, direction });
+        newConfig = brandSortConfig.key === key
+          ? brandSortConfig.direction === 'asc'
+            ? { key, direction: 'desc' }
+            : { key: '', direction: 'asc' }  // Reset sorting
+          : { key, direction: 'asc' };
+        setBrandSortConfig(newConfig);
         break;
     }
   };
@@ -512,13 +530,11 @@ const App: FC = () => {
         config = brandSortConfig;
         break;
       default:
-        return null;
+        return '↕';
     }
     
-    if (config.key === key) {
-      return config.direction === 'asc' ? '↑' : '↓';
-    }
-    return '↕';
+    if (config.key !== key) return '↕';
+    return config.direction === 'asc' ? '↑' : '↓';
   };
 
   const paginateData = <T extends Record<string, any>>(
@@ -589,7 +605,7 @@ const App: FC = () => {
 
   const handleImportExcel = async (event: React.ChangeEvent<HTMLInputElement>) => {
     if (!event.target.files || !event.target.files[0]) return;
-    
+
     setIsImporting(true);
     const formData = new FormData();
     formData.append('file', event.target.files[0]);
@@ -776,7 +792,7 @@ const App: FC = () => {
               : 'bg-green-600 hover:bg-green-700'
             : isExporting
               ? 'bg-green-300 cursor-not-allowed'
-              : 'bg-green-500 hover:bg-green-600'
+            : 'bg-green-500 hover:bg-green-600'
         } text-white flex items-center gap-1.5`}
       >
         {isExporting ? (
@@ -790,8 +806,8 @@ const App: FC = () => {
         ) : (
           <>
             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM13.707 6.707a1 1 0 010-1.414l-3-3a1 1 0 00-1.414 0l-3 3a1 1 0 001.414 1.414L9 5.414V13a1 1 0 102 0V5.414l1.293 1.293a1 1 0 001.414 0z" clipRule="evenodd" />
-            </svg>
+          <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM13.707 6.707a1 1 0 010-1.414l-3-3a1 1 0 00-1.414 0l-3 3a1 1 0 001.414 1.414L9 5.414V13a1 1 0 102 0V5.414l1.293 1.293a1 1 0 001.414 0z" clipRule="evenodd" />
+        </svg>
             <span>Export Excel</span>
           </>
         )}
@@ -942,7 +958,7 @@ const App: FC = () => {
   // Add view toggle component
   const ViewToggle = () => (
     <div className="flex items-center space-x-2">
-      <button
+          <button
         onClick={() => setViewMode('table')}
         className={`p-2 rounded-lg ${
           viewMode === 'table'
@@ -955,8 +971,8 @@ const App: FC = () => {
         }`}
       >
         📋 Table
-      </button>
-      <button
+          </button>
+          <button
         onClick={() => setViewMode('card')}
         className={`p-2 rounded-lg ${
           viewMode === 'card'
@@ -969,14 +985,14 @@ const App: FC = () => {
         }`}
       >
         🗂️ Cards
-      </button>
-    </div>
+          </button>
+        </div>
   );
-
+      
   // Add category view toggle component
   const CategoryViewToggle = () => (
     <div className="flex items-center space-x-2">
-      <button
+        <button
         onClick={() => setCategoryViewMode('table')}
         className={`p-2 rounded-lg ${
           categoryViewMode === 'table'
@@ -989,8 +1005,8 @@ const App: FC = () => {
         }`}
       >
         📋 Table
-      </button>
-      <button
+        </button>
+        <button
         onClick={() => setCategoryViewMode('card')}
         className={`p-2 rounded-lg ${
           categoryViewMode === 'card'
@@ -1003,14 +1019,14 @@ const App: FC = () => {
         }`}
       >
         🗂️ Cards
-      </button>
+        </button>
     </div>
   );
 
   // Add brand view toggle component
   const BrandViewToggle = () => (
     <div className="flex items-center space-x-2">
-      <button
+        <button
         onClick={() => setBrandViewMode('table')}
         className={`p-2 rounded-lg ${
           brandViewMode === 'table'
@@ -1023,7 +1039,7 @@ const App: FC = () => {
         }`}
       >
         📋 Table
-      </button>
+        </button>
       <button
         onClick={() => setBrandViewMode('card')}
         className={`p-2 rounded-lg ${
@@ -1072,23 +1088,106 @@ const App: FC = () => {
               </div>
             </header>
 
+            {/* Dashboard Section */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+              <div className={`p-4 rounded-lg ${isDarkMode ? 'bg-gray-800' : 'bg-white'} shadow`}>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Total Products</p>
+                    <h3 className="text-2xl font-bold mt-1">{products.length}</h3>
+              </div>
+                  <div className={`p-3 rounded-full ${isDarkMode ? 'bg-blue-900' : 'bg-blue-100'}`}>
+                    <span className="text-xl">📦</span>
+              </div>
+              </div>
+              </div>
+
+              <div className={`p-4 rounded-lg ${isDarkMode ? 'bg-gray-800' : 'bg-white'} shadow`}>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Total Stock</p>
+                    <h3 className="text-2xl font-bold mt-1">
+                      {products.reduce((sum, product) => sum + (product.currentStock || 0), 0)}
+                    </h3>
+                  </div>
+                  <div className={`p-3 rounded-full ${isDarkMode ? 'bg-green-900' : 'bg-green-100'}`}>
+                    <span className="text-xl">📊</span>
+                  </div>
+              </div>
+            </div>
+            
+              <div className={`p-4 rounded-lg ${isDarkMode ? 'bg-gray-800' : 'bg-white'} shadow`}>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Low Stock Items</p>
+                    <h3 className="text-2xl font-bold mt-1">
+                      {products.filter(product => 
+                        (product.currentStock || 0) <= (product.minThreshold || 0)
+                      ).length}
+                    </h3>
+                  </div>
+                  <div className={`p-3 rounded-full ${isDarkMode ? 'bg-red-900' : 'bg-red-100'}`}>
+                    <span className="text-xl">⚠️</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className={`p-4 rounded-lg ${isDarkMode ? 'bg-gray-800' : 'bg-white'} shadow`}>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Total Harga Beli</p>
+                    <h3 className="text-2xl font-bold mt-1">
+                      {new Intl.NumberFormat('id-ID', {
+                        style: 'currency',
+                        currency: 'IDR',
+                        minimumFractionDigits: 0,
+                        maximumFractionDigits: 0
+                      }).format(products.reduce((sum, product) => sum + ((product.hargaBeli || 0) * (product.currentStock || 0)), 0))}
+                    </h3>
+                  </div>
+                  <div className={`p-3 rounded-full ${isDarkMode ? 'bg-yellow-900' : 'bg-yellow-100'}`}>
+                    <span className="text-xl">💰</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className={`p-4 rounded-lg ${isDarkMode ? 'bg-gray-800' : 'bg-white'} shadow`}>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Total Harga Jual</p>
+                    <h3 className="text-2xl font-bold mt-1">
+                      {new Intl.NumberFormat('id-ID', {
+                        style: 'currency',
+                        currency: 'IDR',
+                        minimumFractionDigits: 0,
+                        maximumFractionDigits: 0
+                      }).format(products.reduce((sum, product) => sum + ((product.hargaJual || 0) * (product.currentStock || 0)), 0))}
+                    </h3>
+                  </div>
+                  <div className={`p-3 rounded-full ${isDarkMode ? 'bg-purple-900' : 'bg-purple-100'}`}>
+                    <span className="text-xl">💎</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <ImportExportButtons />
 
             <div className="mb-6">
               <div className="flex flex-wrap gap-4 mb-4">
                 <div className="flex-1">
-                  <input
-                    type="text"
-                    placeholder="Search products..."
-                    value={searchQuery}
-                    onChange={e => setSearchQuery(e.target.value)}
+                <input
+                  type="text"
+                  placeholder="Search products..."
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
                     className={`w-full px-4 py-2 rounded-lg ${
                       isDarkMode 
                         ? 'bg-gray-800 border-gray-700 text-white placeholder-gray-400' 
                         : 'bg-white border-gray-200'
                     } border`}
                   />
-                </div>
+              </div>
                 <select
                   value={categoryFilter || ''}
                   onChange={e => setCategoryFilter(e.target.value ? Number(e.target.value) : null)}
@@ -1106,7 +1205,7 @@ const App: FC = () => {
                   ))}
                 </select>
                 <ViewToggle />
-              </div>
+            </div>
 
               <div className="flex justify-between items-center mb-4">
                 <PaginationLimitSelector
@@ -1114,6 +1213,53 @@ const App: FC = () => {
                   value={productPagination.itemsPerPage}
                   onChange={(value) => handleItemsPerPageChange(value, 'products')}
                 />
+                {viewMode === 'card' && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm">Sort by:</span>
+                    <select
+                      value={`${productSortConfig.key}:${productSortConfig.direction}`}
+                      onChange={(e) => {
+                        const [key, direction] = e.target.value.split(':');
+                        if (key === 'none') {
+                          setProductSortConfig({ key: '', direction: 'asc' });
+                        } else {
+                          setProductSortConfig({ key, direction: direction as 'asc' | 'desc' });
+                        }
+                      }}
+                      className={`border rounded-lg p-2 text-sm ${
+                        isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'
+                      }`}
+                    >
+                      <option value="none">No sorting</option>
+                      <optgroup label="Category">
+                        <option value="Category.name:asc">Category (A-Z)</option>
+                        <option value="Category.name:desc">Category (Z-A)</option>
+                      </optgroup>
+                      <optgroup label="Brand">
+                        <option value="Brand.name:asc">Brand (A-Z)</option>
+                        <option value="Brand.name:desc">Brand (Z-A)</option>
+                      </optgroup>
+                      <optgroup label="Product Info">
+                        <option value="tipeMotor:asc">Tipe Motor (A-Z)</option>
+                        <option value="tipeMotor:desc">Tipe Motor (Z-A)</option>
+                        <option value="tipeSize:asc">Tipe/Size (A-Z)</option>
+                        <option value="tipeSize:desc">Tipe/Size (Z-A)</option>
+                      </optgroup>
+                      <optgroup label="Stock">
+                        <option value="currentStock:asc">Stock (Low to High)</option>
+                        <option value="currentStock:desc">Stock (High to Low)</option>
+                        <option value="minThreshold:asc">Min Stock (Low to High)</option>
+                        <option value="minThreshold:desc">Min Stock (High to Low)</option>
+                      </optgroup>
+                      <optgroup label="Price">
+                        <option value="hargaBeli:asc">Harga Beli (Low to High)</option>
+                        <option value="hargaBeli:desc">Harga Beli (High to Low)</option>
+                        <option value="hargaJual:asc">Harga Jual (Low to High)</option>
+                        <option value="hargaJual:desc">Harga Jual (High to Low)</option>
+                      </optgroup>
+                    </select>
+                  </div>
+                )}
                 <div className="flex items-center gap-4">
                   {getPaginationButtons(productPagination.currentPage, getTotalPages(filteredProducts.length, productPagination.itemsPerPage), 'products')}
                 </div>
@@ -1124,11 +1270,13 @@ const App: FC = () => {
               <ProductList
                 products={paginateData(sortData(filteredProducts, productSortConfig), productPagination)}
                 onEdit={product => {
-                  setSelectedProduct(product);
-                  setIsUpdateModalOpen(true);
-                }}
+                              setSelectedProduct(product);
+                              setIsUpdateModalOpen(true);
+                            }}
                 onDelete={handleDeleteProduct}
                 isDarkMode={isDarkMode}
+                sortConfig={productSortConfig}
+                onSort={(key) => requestSort(key, 'products')}
               />
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -1144,8 +1292,8 @@ const App: FC = () => {
                     isDarkMode={isDarkMode}
                   />
                 ))}
-              </div>
-            )}
+          </div>
+        )}
           </>
         );
 
@@ -1156,13 +1304,13 @@ const App: FC = () => {
               <h1 className="text-2xl font-bold">Categories</h1>
               <div className="flex items-center gap-4">
                 <CategoryViewToggle />
-                <button
-                  onClick={() => setIsCategoryModalOpen(true)}
+              <button
+                onClick={() => setIsCategoryModalOpen(true)}
                   className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
-                >
+              >
                   Add Category
-                </button>
-              </div>
+              </button>
+            </div>
             </header>
 
             <div className="mb-6">
@@ -1188,6 +1336,31 @@ const App: FC = () => {
                   value={categoryPagination.itemsPerPage}
                   onChange={(value) => handleItemsPerPageChange(value, 'categories')}
                 />
+                {categoryViewMode === 'card' && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm">Sort by:</span>
+                    <select
+                      value={`${categorySortConfig.key}:${categorySortConfig.direction}`}
+                      onChange={(e) => {
+                        const [key, direction] = e.target.value.split(':');
+                        if (key === 'none') {
+                          setCategorySortConfig({ key: '', direction: 'asc' });
+                        } else {
+                          setCategorySortConfig({ key, direction: direction as 'asc' | 'desc' });
+                        }
+                      }}
+                      className={`border rounded-lg p-2 text-sm ${
+                        isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'
+                      }`}
+                    >
+                      <option value="none">No sorting</option>
+                      <optgroup label="Name">
+                        <option value="name:asc">Name (A-Z)</option>
+                        <option value="name:desc">Name (Z-A)</option>
+                      </optgroup>
+                    </select>
+                  </div>
+                )}
                 <div className="flex items-center gap-4">
                   {getPaginationButtons(categoryPagination.currentPage, getTotalPages(filteredCategories.length, categoryPagination.itemsPerPage), 'categories')}
                 </div>
@@ -1246,8 +1419,8 @@ const App: FC = () => {
                     productsCount={products.filter(p => p.categoryId === category.id).length}
                   />
                 ))}
-              </div>
-            )}
+          </div>
+        )}
           </>
         );
 
@@ -1258,13 +1431,13 @@ const App: FC = () => {
               <h1 className="text-2xl font-bold">Brands</h1>
               <div className="flex items-center gap-4">
                 <BrandViewToggle />
-                <button
-                  onClick={() => setIsBrandModalOpen(true)}
+              <button
+                onClick={() => setIsBrandModalOpen(true)}
                   className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
-                >
+              >
                   Add Brand
-                </button>
-              </div>
+              </button>
+            </div>
             </header>
 
             <div className="mb-6">
@@ -1290,6 +1463,31 @@ const App: FC = () => {
                   value={brandPagination.itemsPerPage}
                   onChange={(value) => handleItemsPerPageChange(value, 'brands')}
                 />
+                {brandViewMode === 'card' && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm">Sort by:</span>
+                    <select
+                      value={`${brandSortConfig.key}:${brandSortConfig.direction}`}
+                      onChange={(e) => {
+                        const [key, direction] = e.target.value.split(':');
+                        if (key === 'none') {
+                          setBrandSortConfig({ key: '', direction: 'asc' });
+                        } else {
+                          setBrandSortConfig({ key, direction: direction as 'asc' | 'desc' });
+                        }
+                      }}
+                      className={`border rounded-lg p-2 text-sm ${
+                        isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'
+                      }`}
+                    >
+                      <option value="none">No sorting</option>
+                      <optgroup label="Name">
+                        <option value="name:asc">Name (A-Z)</option>
+                        <option value="name:desc">Name (Z-A)</option>
+                      </optgroup>
+                    </select>
+                  </div>
+                )}
                 <div className="flex items-center gap-4">
                   {getPaginationButtons(brandPagination.currentPage, getTotalPages(filteredBrands.length, brandPagination.itemsPerPage), 'brands')}
                 </div>
@@ -1304,15 +1502,15 @@ const App: FC = () => {
                       <th className="px-6 py-4 text-left text-sm font-semibold">No</th>
                       <th className="px-6 py-4 text-left text-sm font-semibold">Name</th>
                       <th className="px-6 py-4 text-left text-sm font-semibold">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
+                  </tr>
+                </thead>
+                <tbody>
                     {paginateData(sortData(filteredBrands, brandSortConfig), brandPagination).map((brand, index) => (
                       <tr key={brand.id} className={`border-t ${isDarkMode ? 'border-gray-700 hover:bg-gray-700/50' : 'border-gray-200 hover:bg-gray-50'}`}>
                         <td className="px-6 py-4 text-sm">{((brandPagination.currentPage - 1) * brandPagination.itemsPerPage) + index + 1}</td>
                         <td className="px-6 py-4 text-sm">{brand.name}</td>
                         <td className="px-6 py-4 text-sm">
-                          <button
+                        <button
                             onClick={() => {
                               setSelectedBrand(brand);
                               setIsBrandModalOpen(true);
@@ -1326,12 +1524,12 @@ const App: FC = () => {
                             className="text-red-500 hover:text-red-600"
                           >
                             🗑️
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -1348,7 +1546,7 @@ const App: FC = () => {
                     productsCount={products.filter(p => p.brandId === brand.id).length}
                   />
                 ))}
-              </div>
+                </div>
             )}
           </>
         );
@@ -1357,7 +1555,7 @@ const App: FC = () => {
         return (
           <div className="flex items-center justify-center h-full">
             <p className="text-lg text-gray-500">Coming soon...</p>
-          </div>
+                </div>
         );
     }
   };
@@ -1374,8 +1572,8 @@ const App: FC = () => {
         
         <div className="ml-20 w-full p-8">
           {renderContent()}
-        </div>
-      </div>
+              </div>
+            </div>
 
       {/* Category Modal */}
       {isCategoryModalOpen && (
@@ -1420,7 +1618,7 @@ const App: FC = () => {
                 {selectedCategory ? 'Save Changes' : 'Save'}
               </button>
             </div>
-          </div>
+            </div>
         </div>
       )}
 
@@ -1491,7 +1689,7 @@ const App: FC = () => {
                     </option>
                   ))}
                 </select>
-              </div>
+            </div>
               <div>
                 <label className="block mb-1 text-sm">Brand:</label>
                 <select
@@ -1509,24 +1707,24 @@ const App: FC = () => {
               </div>
               <div>
                 <label className="block mb-1 text-sm">Tipe Motor:</label>
-                <input
-                  type="text"
+              <input
+                type="text"
                   value={newProduct.tipeMotor}
                   onChange={(e) => setNewProduct({ ...newProduct, tipeMotor: e.target.value })}
                   className={`border rounded-lg p-3 text-sm w-full ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' : 'bg-white border-gray-300'}`}
                   placeholder="Enter tipe motor"
-                />
-              </div>
+              />
+            </div>
               <div>
                 <label className="block mb-1 text-sm">Tipe/Size:</label>
-                <input
-                  type="text"
+              <input
+                type="text"
                   value={newProduct.tipeSize}
                   onChange={(e) => setNewProduct({ ...newProduct, tipeSize: e.target.value })}
                   className={`border rounded-lg p-3 text-sm w-full ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' : 'bg-white border-gray-300'}`}
                   placeholder="Enter tipe size"
-                />
-              </div>
+              />
+            </div>
               <div>
                 <label className="block mb-1 text-sm">Harga Beli:</label>
                 <input
@@ -1599,7 +1797,7 @@ const App: FC = () => {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className={`block mb-2 text-sm ${isDarkMode ? 'text-white' : 'text-gray-700'}`}>Category:</label>
-                <select
+              <select
                   value={selectedProduct.categoryId ?? 0}
                   onChange={(e) => setSelectedProduct({ ...selectedProduct, categoryId: Number(e.target.value) })}
                   className={`border rounded-lg p-3 text-sm w-full ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'}`}
@@ -1609,9 +1807,9 @@ const App: FC = () => {
                     <option key={category.id} value={category.id} className={isDarkMode ? 'bg-gray-700 text-white' : ''}>
                       {category.name}
                     </option>
-                  ))}
-                </select>
-              </div>
+                ))}
+              </select>
+            </div>
               <div>
                 <label className={`block mb-2 text-sm ${isDarkMode ? 'text-white' : 'text-gray-700'}`}>Brand:</label>
                 <select
@@ -1671,7 +1869,7 @@ const App: FC = () => {
                   onChange={(e) => setSelectedProduct({ ...selectedProduct, note: e.target.value })}
                   className={`border rounded-lg p-3 text-sm w-full ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'}`}
                 />
-              </div>
+            </div>
               <div>
                 <label className={`block mb-2 text-sm ${isDarkMode ? 'text-white' : 'text-gray-700'}`}>Current Stock:</label>
                 <input
