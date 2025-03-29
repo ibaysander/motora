@@ -1,10 +1,10 @@
 import React from 'react';
 import { Brand, Product } from '../../hooks/useApi';
 import { SortConfig, PaginationConfig } from '../../features/products';
+import { BrandCard } from '../../features/brands';
 import { BrandViewToggle } from '../ui/ViewToggles';
 import { PaginationLimitSelector, PaginationButtons } from '../ui/Pagination';
 import BrandModal from '../ui/BrandModal';
-import BrandCard from '../ui/BrandCard';
 
 interface BrandsTabProps {
   products: Product[];

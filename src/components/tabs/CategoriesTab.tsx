@@ -1,10 +1,10 @@
 import React from 'react';
 import { Category, Product } from '../../hooks/useApi';
 import { SortConfig, PaginationConfig } from '../../features/products';
+import { CategoryCard } from '../../features/categories';
 import { CategoryViewToggle } from '../ui/ViewToggles';
 import { PaginationLimitSelector, PaginationButtons } from '../ui/Pagination';
 import CategoryModal from '../ui/CategoryModal';
-import CategoryCard from '../ui/CategoryCard';
 
 interface CategoriesTabProps {
   products: Product[];

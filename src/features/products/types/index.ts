@@ -17,7 +17,7 @@ export interface Product {
   hargaBeli: number | null;
   hargaJual: number | null;
   note: string | null;
-  sales: number;
+  sales?: number;
 }
 
 export interface SortConfig {

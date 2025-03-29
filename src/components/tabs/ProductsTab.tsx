@@ -1,14 +1,12 @@
 import React, { ChangeEvent } from 'react';
 import { Product, Category, Brand } from '../../hooks/useApi';
-import { SortConfig, PaginationConfig } from '../../features/products';
+import { SortConfig, PaginationConfig, ProductCard, ProductList } from '../../features/products';
 import Dashboard from '../ui/Dashboard';
 import ImportExportButtons from '../ui/ImportExportButtons';
 import { ViewToggle } from '../ui/ViewToggles';
 import { PaginationLimitSelector, PaginationButtons } from '../ui/Pagination';
 import ProductModal from '../ui/ProductModal';
 import { CategoryFilter } from '../ui/Filters';
-import ProductList from '../ui/ProductList';
-import ProductCard from '../ui/ProductCard';
 
 interface ProductsTabProps {
   products: Product[];
