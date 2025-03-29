@@ -1,323 +1,219 @@
-// @ts-ignore
-import { useState, useCallback } from 'react';
-import { SortConfig } from '../utils/dataUtils';
+import { useState, useCallback, useEffect } from 'react';
+import { apis } from '../services/api';
+import { Product, Category, Brand, ProductRequest, CategoryRequest, BrandRequest } from '../services/api/types';
 
-// Define the base types
-export interface Product {
-  id: number;
-  categoryId: number | null;
-  brandId: number | null;
-  Category?: {
-    id: number;
-    name: string;
-  } | null;
-  Brand?: {
-    id: number;
-    name: string;
-  } | null;
-  tipeMotor: string | null;
-  tipeSize: string | null;
-  currentStock: number;
-  minThreshold: number;
-  hargaBeli: number | null;
-  hargaJual: number | null;
-  note: string | null;
-  sales?: number;
-}
+export type { Product, Category, Brand, ProductRequest, CategoryRequest, BrandRequest };
 
-export interface Category {
-  id: number;
-  name: string;
-}
-
-export interface Brand {
-  id: number;
-  name: string;
-}
-
-// New product without ID
+// Type for product without ID
 export type NewProduct = Omit<Product, 'id' | 'Category' | 'Brand' | 'sales'>;
 
-// Set API URL
-// @ts-ignore
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
-
+/**
+ * Custom hook for API operations
+ */
 export function useApi() {
   // State for data
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [brands, setBrands] = useState<Brand[]>([]);
-
+  
   // State for loading and errors
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-
+  
   // Fetch all data
   const fetchData = useCallback(async () => {
     setIsLoading(true);
     setError(null);
+    
     try {
       const [productsRes, categoriesRes, brandsRes] = await Promise.all([
-        fetch(`${API_URL}/products`),
-        fetch(`${API_URL}/categories`),
-        fetch(`${API_URL}/brands`),
+        apis.getProducts(),
+        apis.getCategories(),
+        apis.getBrands()
       ]);
-
-      if (!productsRes.ok || !categoriesRes.ok || !brandsRes.ok) {
-        throw new Error('Failed to fetch data');
-      }
-
-      const [productsData, categoriesData, brandsData] = await Promise.all([
-        productsRes.json(),
-        categoriesRes.json(),
-        brandsRes.json(),
-      ]);
-
-      setProducts(productsData);
-      setCategories(categoriesData);
-      setBrands(brandsData);
-    } catch (error) {
-      console.error('Error fetching data:', error);
-      setError('Failed to fetch data');
+      
+      setProducts(productsRes.data);
+      setCategories(categoriesRes.data);
+      setBrands(brandsRes.data);
+      return { products: productsRes.data, categories: categoriesRes.data, brands: brandsRes.data };
+    } catch (err: any) {
+      const errorMsg = err.response?.data?.message || 'Failed to fetch data';
+      console.error('Error fetching data:', err);
+      setError(errorMsg);
+      return null;
     } finally {
       setIsLoading(false);
     }
   }, []);
-
+  
   // Product operations
   const addProduct = useCallback(async (product: NewProduct) => {
     setIsLoading(true);
     setError(null);
+    
     try {
-      const response = await fetch(`${API_URL}/products`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(product),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to add product');
-      }
-
+      await apis.createProduct(product);
       await fetchData();
       return true;
-    } catch (error) {
-      console.error('Error adding product:', error);
-      setError('Failed to add product');
+    } catch (err: any) {
+      const errorMsg = err.response?.data?.message || 'Failed to add product';
+      console.error('Error adding product:', err);
+      setError(errorMsg);
       return false;
     } finally {
       setIsLoading(false);
     }
   }, [fetchData]);
-
+  
   const updateProduct = useCallback(async (product: Product) => {
     setIsLoading(true);
     setError(null);
+    
     try {
-      const response = await fetch(`${API_URL}/products/${product.id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(product),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to update product');
-      }
-
+      const { id, Category, Brand, sales, ...productData } = product;
+      await apis.updateProduct(id, productData);
       await fetchData();
       return true;
-    } catch (error) {
-      console.error('Error updating product:', error);
-      setError('Failed to update product');
+    } catch (err: any) {
+      const errorMsg = err.response?.data?.message || 'Failed to update product';
+      console.error('Error updating product:', err);
+      setError(errorMsg);
       return false;
     } finally {
       setIsLoading(false);
     }
   }, [fetchData]);
-
+  
   const deleteProduct = useCallback(async (id: number) => {
     setIsLoading(true);
     setError(null);
+    
     try {
-      const response = await fetch(`${API_URL}/products/${id}`, {
-        method: 'DELETE',
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to delete product');
-      }
-
+      await apis.deleteProduct(id);
       await fetchData();
       return true;
-    } catch (error) {
-      console.error('Error deleting product:', error);
-      setError('Failed to delete product');
+    } catch (err: any) {
+      const errorMsg = err.response?.data?.message || 'Failed to delete product';
+      console.error('Error deleting product:', err);
+      setError(errorMsg);
       return false;
     } finally {
       setIsLoading(false);
     }
   }, [fetchData]);
-
+  
   // Category operations
-  const addCategory = useCallback(async (category: { name: string }) => {
+  const addCategory = useCallback(async (category: CategoryRequest) => {
     setIsLoading(true);
     setError(null);
+    
     try {
-      const response = await fetch(`${API_URL}/categories`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(category),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to add category');
-      }
-
+      await apis.createCategory(category);
       await fetchData();
       return true;
-    } catch (error) {
-      console.error('Error adding category:', error);
-      setError('Failed to add category');
+    } catch (err: any) {
+      const errorMsg = err.response?.data?.message || 'Failed to add category';
+      console.error('Error adding category:', err);
+      setError(errorMsg);
       return false;
     } finally {
       setIsLoading(false);
     }
   }, [fetchData]);
-
+  
   const updateCategory = useCallback(async (category: Category) => {
     setIsLoading(true);
     setError(null);
+    
     try {
-      const response = await fetch(`${API_URL}/categories/${category.id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(category),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to update category');
-      }
-
+      const { id, ...categoryData } = category;
+      await apis.updateCategory(id, categoryData);
       await fetchData();
       return true;
-    } catch (error) {
-      console.error('Error updating category:', error);
-      setError('Failed to update category');
+    } catch (err: any) {
+      const errorMsg = err.response?.data?.message || 'Failed to update category';
+      console.error('Error updating category:', err);
+      setError(errorMsg);
       return false;
     } finally {
       setIsLoading(false);
     }
   }, [fetchData]);
-
+  
   const deleteCategory = useCallback(async (id: number) => {
     setIsLoading(true);
     setError(null);
+    
     try {
-      const response = await fetch(`${API_URL}/categories/${id}`, {
-        method: 'DELETE',
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to delete category');
-      }
-
+      await apis.deleteCategory(id);
       await fetchData();
       return true;
-    } catch (error) {
-      console.error('Error deleting category:', error);
-      setError('Failed to delete category');
+    } catch (err: any) {
+      const errorMsg = err.response?.data?.message || 'Failed to delete category';
+      console.error('Error deleting category:', err);
+      setError(errorMsg);
       return false;
     } finally {
       setIsLoading(false);
     }
   }, [fetchData]);
-
+  
   // Brand operations
-  const addBrand = useCallback(async (brand: { name: string }) => {
+  const addBrand = useCallback(async (brand: BrandRequest) => {
     setIsLoading(true);
     setError(null);
+    
     try {
-      const response = await fetch(`${API_URL}/brands`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(brand),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to add brand');
-      }
-
+      await apis.createBrand(brand);
       await fetchData();
       return true;
-    } catch (error) {
-      console.error('Error adding brand:', error);
-      setError('Failed to add brand');
+    } catch (err: any) {
+      const errorMsg = err.response?.data?.message || 'Failed to add brand';
+      console.error('Error adding brand:', err);
+      setError(errorMsg);
       return false;
     } finally {
       setIsLoading(false);
     }
   }, [fetchData]);
-
+  
   const updateBrand = useCallback(async (brand: Brand) => {
     setIsLoading(true);
     setError(null);
+    
     try {
-      const response = await fetch(`${API_URL}/brands/${brand.id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(brand),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to update brand');
-      }
-
+      const { id, ...brandData } = brand;
+      await apis.updateBrand(id, brandData);
       await fetchData();
       return true;
-    } catch (error) {
-      console.error('Error updating brand:', error);
-      setError('Failed to update brand');
+    } catch (err: any) {
+      const errorMsg = err.response?.data?.message || 'Failed to update brand';
+      console.error('Error updating brand:', err);
+      setError(errorMsg);
       return false;
     } finally {
       setIsLoading(false);
     }
   }, [fetchData]);
-
+  
   const deleteBrand = useCallback(async (id: number) => {
     setIsLoading(true);
     setError(null);
+    
     try {
-      const response = await fetch(`${API_URL}/brands/${id}`, {
-        method: 'DELETE',
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to delete brand');
-      }
-
+      await apis.deleteBrand(id);
       await fetchData();
       return true;
-    } catch (error) {
-      console.error('Error deleting brand:', error);
-      setError('Failed to delete brand');
+    } catch (err: any) {
+      const errorMsg = err.response?.data?.message || 'Failed to delete brand';
+      console.error('Error deleting brand:', err);
+      setError(errorMsg);
       return false;
     } finally {
       setIsLoading(false);
     }
   }, [fetchData]);
-
+  
   return {
     // Data
     products,
@@ -346,4 +242,4 @@ export function useApi() {
     updateBrand,
     deleteBrand
   };
-} 
+}
