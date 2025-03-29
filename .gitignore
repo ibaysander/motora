@@ -35,3 +35,4 @@ server/database/
 server/data/
 server/uploads/
 *.xlsx
+.cursor/rules/motora.mdc
