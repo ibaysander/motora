@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Brand, Product } from '../../hooks/useApi';
 import { SortConfig, PaginationConfig } from '../../features/products';
 import { BrandCard } from '../../features/brands';
@@ -63,6 +63,45 @@ const BrandsTab: React.FC<BrandsTabProps> = ({
   handleDeleteBrand,
   itemsPerPageOptions
 }) => {
+  const [selectedItems, setSelectedItems] = useState<number[]>([]);
+
+  // Handle bulk selection
+  const toggleSelectAll = () => {
+    if (selectedItems.length === paginatedData.length) {
+      setSelectedItems([]);
+    } else {
+      setSelectedItems(paginatedData.map(brand => brand.id));
+    }
+  };
+
+  const toggleSelectItem = (id: number) => {
+    if (selectedItems.includes(id)) {
+      setSelectedItems(selectedItems.filter(itemId => itemId !== id));
+    } else {
+      setSelectedItems([...selectedItems, id]);
+    }
+  };
+
+  // Handle bulk delete
+  const handleBulkDelete = async () => {
+    if (selectedItems.length === 0) return;
+    
+    if (window.confirm(`Are you sure you want to delete ${selectedItems.length} selected brands?`)) {
+      try {
+        // Sequential deletion to avoid overwhelming the server
+        for (const id of selectedItems) {
+          await handleDeleteBrand(id);
+        }
+        
+        // Clear selection
+        setSelectedItems([]);
+      } catch (error) {
+        console.error('Error during bulk deletion:', error);
+        alert('An error occurred during bulk deletion. Please try again.');
+      }
+    }
+  };
+
   return (
     <div className="p-6">
       <header className="flex justify-between items-center mb-8">
@@ -100,13 +139,23 @@ const BrandsTab: React.FC<BrandsTabProps> = ({
         </div>
 
         <div className="flex justify-between items-center mb-4">
-          <PaginationLimitSelector
-            type="brands"
-            value={paginationConfig.itemsPerPage}
-            onChange={(value) => handleItemsPerPageChange(value)}
-            isDarkMode={isDarkMode}
-            itemsPerPageOptions={itemsPerPageOptions}
-          />
+          <div className="flex items-center gap-2">
+            <PaginationLimitSelector
+              type="brands"
+              value={paginationConfig.itemsPerPage}
+              onChange={(value) => handleItemsPerPageChange(value)}
+              isDarkMode={isDarkMode}
+              itemsPerPageOptions={itemsPerPageOptions}
+            />
+            {selectedItems.length > 0 && (
+              <button
+                onClick={handleBulkDelete}
+                className="ml-4 px-3 py-1 bg-red-500 text-white text-sm rounded hover:bg-red-600"
+              >
+                Delete Selected ({selectedItems.length})
+              </button>
+            )}
+          </div>
           {brandViewMode === 'card' && (
             <div className="flex items-center gap-2">
               <span className="text-sm">Sort by:</span>
@@ -149,14 +198,38 @@ const BrandsTab: React.FC<BrandsTabProps> = ({
           <table className={`min-w-full rounded-lg shadow ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
             <thead className={isDarkMode ? 'bg-gray-700' : 'bg-gray-100'}>
               <tr>
-                <th className="px-6 py-4 text-left text-sm font-semibold">No</th>
-                <th className="px-6 py-4 text-left text-sm font-semibold">Name</th>
-                <th className="px-6 py-4 text-left text-sm font-semibold">Actions</th>
+                <th className="px-3 py-3 text-left text-xs font-medium w-8">
+                  <input
+                    type="checkbox"
+                    checked={paginatedData.length > 0 && selectedItems.length === paginatedData.length}
+                    onChange={toggleSelectAll}
+                    className="rounded"
+                  />
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium">No</th>
+                <th className="px-6 py-3 text-left text-xs font-medium">
+                  <button
+                    onClick={() => requestSort('name')}
+                    className="flex items-center gap-1 hover:bg-opacity-10 hover:bg-gray-500 px-1 py-0.5 rounded"
+                  >
+                    Name
+                    <span className="text-xs">{getSortIcon('name')}</span>
+                  </button>
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium">Actions</th>
               </tr>
             </thead>
             <tbody>
               {paginatedData.map((brand, index) => (
                 <tr key={brand.id} className={`border-t ${isDarkMode ? 'border-gray-700 hover:bg-gray-700/50' : 'border-gray-200 hover:bg-gray-50'}`}>
+                  <td className="px-3 py-4 text-center">
+                    <input
+                      type="checkbox"
+                      checked={selectedItems.includes(brand.id)}
+                      onChange={() => toggleSelectItem(brand.id)}
+                      className="rounded"
+                    />
+                  </td>
                   <td className="px-6 py-4 text-sm">{((paginationConfig.currentPage - 1) * paginationConfig.itemsPerPage) + index + 1}</td>
                   <td className="px-6 py-4 text-sm">{brand.name}</td>
                   <td className="px-6 py-4 text-sm">
@@ -183,18 +256,47 @@ const BrandsTab: React.FC<BrandsTabProps> = ({
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {selectedItems.length > 0 && (
+            <div className="col-span-full mb-4 flex flex-wrap gap-2">
+              {paginatedData.map(brand => (
+                <label key={brand.id} className={`flex items-center p-2 rounded ${
+                  isDarkMode ? 'bg-gray-700' : 'bg-gray-100'
+                } ${selectedItems.includes(brand.id) ? 'border-2 border-blue-500' : ''}`}>
+                  <input
+                    type="checkbox"
+                    checked={selectedItems.includes(brand.id)}
+                    onChange={() => toggleSelectItem(brand.id)}
+                    className="mr-2 rounded"
+                  />
+                  <span>{brand.name}</span>
+                </label>
+              ))}
+            </div>
+          )}
           {paginatedData.map(brand => (
-            <BrandCard
-              key={brand.id}
-              brand={brand}
-              onEdit={() => {
-                setSelectedBrand(brand);
-                setIsBrandModalOpen(true);
-              }}
-              onDelete={handleDeleteBrand}
-              isDarkMode={isDarkMode}
-              productsCount={products.filter(p => p.brandId === brand.id).length}
-            />
+            <div key={brand.id} className={`relative ${selectedItems.includes(brand.id) ? 'ring-2 ring-blue-500' : ''}`}>
+              {brandViewMode === 'card' && (
+                <div className="absolute top-2 left-2 z-10">
+                  <input
+                    type="checkbox"
+                    checked={selectedItems.includes(brand.id)}
+                    onChange={() => toggleSelectItem(brand.id)}
+                    className="rounded"
+                  />
+                </div>
+              )}
+              <BrandCard
+                key={brand.id}
+                brand={brand}
+                onEdit={() => {
+                  setSelectedBrand(brand);
+                  setIsBrandModalOpen(true);
+                }}
+                onDelete={handleDeleteBrand}
+                isDarkMode={isDarkMode}
+                productsCount={products.filter(p => p.brandId === brand.id).length}
+              />
+            </div>
           ))}
         </div>
       )}

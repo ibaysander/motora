@@ -17,6 +17,7 @@ import ClearDataModal from './components/ui/ClearDataModal';
 import ProductsTab from './components/tabs/ProductsTab';
 import CategoriesTab from './components/tabs/CategoriesTab';
 import BrandsTab from './components/tabs/BrandsTab';
+import MotorcyclesTab from './components/tabs/MotorcyclesTab';
 import { useLayout } from './contexts/LayoutContext';
 import { useNotificationContext } from './contexts/NotificationContext';
 import AppProviders from './providers/AppProviders';
@@ -104,7 +105,7 @@ const AppContent: FC = () => {
   const [newProduct, setNewProduct] = useState<Partial<Product>>({
     categoryId: 0,
     brandId: 0,
-    tipeMotor: '',
+    motorcycleId: null,
     tipeSize: '',
     hargaBeli: 0,
     hargaJual: 0,
@@ -244,7 +245,7 @@ const AppContent: FC = () => {
     const productData = {
       categoryId: newProduct.categoryId || null,
       brandId: newProduct.brandId || null,
-      tipeMotor: newProduct.tipeMotor || null,
+      motorcycleId: newProduct.motorcycleId || null,
       tipeSize: newProduct.tipeSize || null,
       hargaBeli: newProduct.hargaBeli || null,
       hargaJual: newProduct.hargaJual || null,
@@ -260,7 +261,7 @@ const AppContent: FC = () => {
       setNewProduct({
         categoryId: 0,
         brandId: 0,
-        tipeMotor: '',
+        motorcycleId: null,
         tipeSize: '',
         hargaBeli: 0,
         hargaJual: 0,
@@ -300,7 +301,12 @@ const AppContent: FC = () => {
   // Add filtered products based on search and category
   const filteredProducts = products.filter((product: Product) => {
     const matchesSearch = searchQuery.toLowerCase() === '' ||
-      (product.tipeMotor && product.tipeMotor.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (product.Motorcycle && 
+        ((product.Motorcycle.manufacturer && 
+          product.Motorcycle.manufacturer.toLowerCase().includes(searchQuery.toLowerCase())) ||
+         (product.Motorcycle.model && 
+          product.Motorcycle.model.toLowerCase().includes(searchQuery.toLowerCase()))
+        )) ||
       (product.tipeSize && product.tipeSize.toLowerCase().includes(searchQuery.toLowerCase()));
 
     const matchesCategory = !categoryFilter || product.categoryId === categoryFilter;
@@ -445,6 +451,15 @@ const AppContent: FC = () => {
             handleUpdateBrand={handleUpdateBrand}
             handleDeleteBrand={handleDeleteBrand}
             itemsPerPageOptions={itemsPerPageOptions}
+          />
+        );
+
+      case 'motorcycles':
+        return (
+          <MotorcyclesTab
+            isDarkMode={isDarkMode}
+            setIsDarkMode={setIsDarkMode}
+            products={products}
           />
         );
 

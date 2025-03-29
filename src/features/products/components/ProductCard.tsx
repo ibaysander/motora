@@ -20,7 +20,9 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onEdit, onDelete, is
       <div className="flex justify-between items-start mb-4">
         <div>
           <h3 className={`text-lg font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-            {product.tipeMotor || 'N/A'}
+            {product.Motorcycle ? 
+              `${product.Motorcycle.manufacturer || ''} ${product.Motorcycle.model || ''}`.trim() 
+              : 'N/A'}
           </h3>
           <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
             {product.tipeSize || 'N/A'}

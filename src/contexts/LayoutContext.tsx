@@ -6,8 +6,8 @@ interface LayoutContextType {
   setIsDarkMode: (isDark: boolean) => void;
   isExpanded: boolean;
   setIsExpanded: (isExpanded: boolean) => void;
-  currentTab: 'products' | 'categories' | 'brands';
-  setCurrentTab: (tab: 'products' | 'categories' | 'brands') => void;
+  currentTab: 'products' | 'categories' | 'brands' | 'motorcycles';
+  setCurrentTab: (tab: 'products' | 'categories' | 'brands' | 'motorcycles') => void;
 }
 
 const defaultLayoutContext: LayoutContextType = {
@@ -37,7 +37,7 @@ export const LayoutProvider: FC<LayoutProviderProps> = ({ children }) => {
     return saved === 'false' ? false : true; // Default to true if not set
   });
   
-  const [currentTab, setCurrentTab] = useState<'products' | 'categories' | 'brands'>('products');
+  const [currentTab, setCurrentTab] = useState<'products' | 'categories' | 'brands' | 'motorcycles'>('products');
   
   // Update localStorage whenever dark mode changes
   useEffect(() => {

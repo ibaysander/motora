@@ -46,4 +46,8 @@ export const CategoryViewToggle: React.FC<ViewToggleProps> = ({ viewMode, setVie
 
 export const BrandViewToggle: React.FC<ViewToggleProps> = ({ viewMode, setViewMode, isDarkMode }) => (
   <ViewToggle viewMode={viewMode} setViewMode={setViewMode} isDarkMode={isDarkMode} />
+);
+
+export const MotorcycleViewToggle: React.FC<ViewToggleProps> = ({ viewMode, setViewMode, isDarkMode }) => (
+  <ViewToggle viewMode={viewMode} setViewMode={setViewMode} isDarkMode={isDarkMode} />
 ); 

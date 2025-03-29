@@ -2,8 +2,8 @@
 import React from 'react';
 
 export interface SidebarProps {
-  currentTab: 'products' | 'categories' | 'brands';
-  setCurrentTab: (tab: 'products' | 'categories' | 'brands') => void;
+  currentTab: 'products' | 'categories' | 'brands' | 'motorcycles';
+  setCurrentTab: (tab: 'products' | 'categories' | 'brands' | 'motorcycles') => void;
   isDarkMode: boolean;
   onLogout: () => void;
   isExpanded: boolean;
@@ -11,7 +11,7 @@ export interface SidebarProps {
 }
 
 interface Tab {
-  id: 'products' | 'categories' | 'brands';
+  id: 'products' | 'categories' | 'brands' | 'motorcycles';
   icon: string;
   label: string;
 }
@@ -19,7 +19,8 @@ interface Tab {
 const tabs: Tab[] = [
   { id: 'products', icon: '📦', label: 'Products' },
   { id: 'categories', icon: '📁', label: 'Categories' },
-  { id: 'brands', icon: '🏢', label: 'Brands' }
+  { id: 'brands', icon: '🏢', label: 'Brands' },
+  { id: 'motorcycles', icon: '🏍️', label: 'Motorcycles' }
 ];
 
 const Sidebar: React.FC<SidebarProps> = ({ 
@@ -30,7 +31,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   isExpanded 
 }) => {
   return (
-    <div className={`${isExpanded ? 'w-40 translate-x-0' : 'w-0 -translate-x-full'} fixed left-0 top-0 bottom-0 min-h-screen ${isDarkMode ? 'bg-gray-900' : 'bg-gray-100'} border-r ${isDarkMode ? 'border-gray-800' : 'border-gray-200'} flex flex-col justify-between py-6 transition-all duration-300 ease-in-out z-20 overflow-hidden`}>
+    <div className={`${isExpanded ? 'w-40 translate-x-0' : 'w-0 -translate-x-full'} fixed left-0 top-0 bottom-0 min-h-screen ${isDarkMode ? 'bg-gray-900' : 'bg-gray-100'} border-r ${isDarkMode ? 'border-gray-800' : 'border-gray-200'} flex flex-col justify-between py-6 transition-all duration-300 ease-in-out z-50 overflow-hidden`}>
       <div className="flex flex-col items-center">
         <div className="mb-8 flex items-center justify-center">
           <span className="text-2xl">🏍️</span>
@@ -51,7 +52,7 @@ const Sidebar: React.FC<SidebarProps> = ({
               }`}
             title={tab.label}
           >
-            <span>{tab.icon}</span>
+            <span className="block w-6">{tab.icon}</span>
             <span className="ml-2 text-xs opacity-100 transition-opacity duration-300">{tab.label}</span>
           </button>
         ))}
@@ -65,7 +66,7 @@ const Sidebar: React.FC<SidebarProps> = ({
             ${isDarkMode ? 'text-red-400 hover:bg-gray-800' : 'text-red-500 hover:bg-gray-200'}`}
           title="Logout"
         >
-          <span>🚪</span>
+          <span className="block w-6">🚪</span>
           <span className="ml-2 text-xs opacity-100 transition-opacity duration-300">Logout</span>
         </button>
       </div>

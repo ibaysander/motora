@@ -22,7 +22,7 @@ const AppLayout: FC<AppLayoutProps> = ({ children, onLogout }) => {
         setIsExpanded={setIsExpanded} 
         isDarkMode={isDarkMode}
       />
-      <div className="flex">
+      <div className="flex relative">
         <Sidebar 
           currentTab={currentTab} 
           setCurrentTab={setCurrentTab} 
@@ -31,8 +31,10 @@ const AppLayout: FC<AppLayoutProps> = ({ children, onLogout }) => {
           isExpanded={isExpanded}
           setIsExpanded={setIsExpanded}
         />
-        <main className={`flex-1 ${isExpanded ? 'ml-40' : 'ml-0'} transition-all duration-200`}>
-          {children}
+        <main className={`flex-1 ${isExpanded ? 'ml-40' : 'ml-0'} transition-all duration-200 overflow-hidden max-w-full`}>
+          <div className="w-full max-w-full overflow-hidden">
+            {children}
+          </div>
         </main>
       </div>
     </div>

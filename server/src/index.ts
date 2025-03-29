@@ -4,9 +4,10 @@ import { initializeDatabase } from './config/initDb';
 import productRoutes from './routes/products';
 import categoryRoutes from './routes/categories';
 import brandRoutes from './routes/brands';
+import motorcycleRoutes from './routes/motorcycles';
 import multer from 'multer';
 import xlsx from 'xlsx';
-import { Product, Category, Brand } from './models';
+import { Product, Category, Brand, Motorcycle } from './models';
 import { Model, InferAttributes, InferCreationAttributes } from 'sequelize';
 import path from 'path';
 
@@ -14,7 +15,7 @@ interface ProductWithAssociations extends Model<InferAttributes<ProductWithAssoc
   id: number;
   categoryId: number;
   brandId: number;
-  tipeMotor: string | null;
+  motorcycleId: number | null;
   tipeSize: string | null;
   hargaBeli: number | null;
   hargaJual: number | null;
@@ -26,6 +27,10 @@ interface ProductWithAssociations extends Model<InferAttributes<ProductWithAssoc
   };
   brand?: {
     name: string;
+  };
+  motorcycle?: {
+    manufacturer: string;
+    model: string | null;
   };
 }
 
@@ -65,6 +70,7 @@ app.use(express.json());
 app.use('/api', productRoutes);
 app.use('/api', categoryRoutes);
 app.use('/api', brandRoutes);
+app.use('/api', motorcycleRoutes);
 
 // Import Excel endpoint
 app.post('/api/import-excel', upload.single('file'), async (req, res) => {
@@ -86,6 +92,7 @@ app.post('/api/import-excel', upload.single('file'), async (req, res) => {
       let currentBrand: string | null = null;
       const categoryMap = new Map<string, number>();
       const brandMap = new Map<string, number>();
+      const motorcycleMap = new Map<string, number>();
 
       // Process each row
       for (const row of data as any[]) {
@@ -119,8 +126,36 @@ app.post('/api/import-excel', upload.single('file'), async (req, res) => {
             brandMap.set(currentBrand, brand.get('id') as number);
           }
 
-          // Create product
-          const tipeMotor = row['TIPE MOTOR'] ? String(row['TIPE MOTOR']).trim() : null;
+          // Extract motorcycle manufacturer and model from TIPE MOTOR
+          let motorcycleId = null;
+          
+          if (row['TIPE MOTOR']) {
+            const tipeMotor = String(row['TIPE MOTOR']).trim();
+            const parts = tipeMotor.split(' ');
+            
+            let manufacturer = '';
+            let model = null;
+            
+            if (parts.length >= 2) {
+              manufacturer = parts[0];
+              model = parts.slice(1).join(' ');
+            } else {
+              manufacturer = tipeMotor;
+            }
+            
+            const motorcycleKey = `${manufacturer}-${model || ''}`;
+            
+            if (!motorcycleMap.has(motorcycleKey)) {
+              const [motorcycle] = await Motorcycle.findOrCreate({
+                where: { manufacturer, model },
+                defaults: { manufacturer, model }
+              });
+              motorcycleMap.set(motorcycleKey, motorcycle.get('id') as number);
+            }
+            
+            motorcycleId = motorcycleMap.get(motorcycleKey) || null;
+          }
+
           const tipeSize = row['TIPE / SIZE'] ? String(row['TIPE / SIZE']).trim() : null;
           const hargaBeli = row['BELI'] ? Number(row['BELI']) : null;
           const hargaJual = row['JUAL'] ? Number(row['JUAL']) : null;
@@ -129,7 +164,7 @@ app.post('/api/import-excel', upload.single('file'), async (req, res) => {
           await Product.create({
             categoryId: categoryMap.get(currentCategory)!,
             brandId: brandMap.get(currentBrand)!,
-            tipeMotor,
+            motorcycleId,
             tipeSize,
             hargaBeli,
             hargaJual,
@@ -169,16 +204,26 @@ app.get('/api/export-excel', async (req, res) => {
     const products = await Product.findAll({
       include: [
         { model: Category, as: 'category' },
-        { model: Brand, as: 'brand' }
+        { model: Brand, as: 'brand' },
+        { model: Motorcycle, as: 'motorcycle' }
       ]
     }) as unknown as ProductWithAssociations[];
 
     const productsData = products.map(product => {
       const productData = product.get({ plain: true });
+      
+      // Create tipeMotor for backward compatibility
+      const tipeMotor = product.motorcycle ? 
+        [product.motorcycle.manufacturer, product.motorcycle.model]
+          .filter(Boolean)
+          .join(' ') : '';
+      
       return {
         'NAMA PRODUK': productData.category?.name || '',
         'MEREK': productData.brand?.name || '',
-        'TIPE MOTOR': productData.tipeMotor || '',
+        'MANUFACTURER': product.motorcycle?.manufacturer || '',
+        'MODEL': product.motorcycle?.model || '',
+        'TIPE MOTOR': tipeMotor, // Combined for backward compatibility
         'TIPE / SIZE': productData.tipeSize || '',
         'BELI': productData.hargaBeli || 0,
         'JUAL': productData.hargaJual || 0,

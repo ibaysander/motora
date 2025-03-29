@@ -27,86 +27,92 @@ const ProductList: React.FC<ProductListProps> = ({ products, onEdit, onDelete, i
   );
 
   return (
-    <div className="bg-white rounded-lg shadow overflow-hidden">
-      <table className={`min-w-full rounded-lg shadow ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
-        <thead className={isDarkMode ? 'bg-gray-700' : 'bg-gray-100'}>
-          <tr>
-            <th className="px-6 py-4 text-left text-sm font-semibold">No</th>
-            <th className="px-6 py-4 text-left text-sm font-semibold">
-              {renderSortButton('Category', 'Category.name')}
-            </th>
-            <th className="px-6 py-4 text-left text-sm font-semibold">
-              {renderSortButton('Brand', 'Brand.name')}
-            </th>
-            <th className="px-6 py-4 text-left text-sm font-semibold">
-              {renderSortButton('Tipe Motor', 'tipeMotor')}
-            </th>
-            <th className="px-6 py-4 text-left text-sm font-semibold">
-              {renderSortButton('Tipe/Size', 'tipeSize')}
-            </th>
-            <th className="px-6 py-4 text-left text-sm font-semibold">
-              {renderSortButton('Current Stock', 'currentStock')}
-            </th>
-            <th className="px-6 py-4 text-left text-sm font-semibold">
-              {renderSortButton('Min Stock', 'minThreshold')}
-            </th>
-            <th className="px-6 py-4 text-left text-sm font-semibold">
-              {renderSortButton('Harga Beli', 'hargaBeli')}
-            </th>
-            <th className="px-6 py-4 text-left text-sm font-semibold">
-              {renderSortButton('Harga Jual', 'hargaJual')}
-            </th>
-            <th className="px-6 py-4 text-left text-sm font-semibold">
-              {renderSortButton('Note', 'note')}
-            </th>
-            <th className="px-6 py-4 text-left text-sm font-semibold">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {products.map((product, index) => (
-            <tr key={product.id} className={`border-t ${isDarkMode ? 'border-gray-700 hover:bg-gray-700/50' : 'border-gray-200 hover:bg-gray-50'}`}>
-              <td className="px-6 py-4 text-sm">{index + 1}</td>
-              <td className="px-6 py-4 text-sm">{product.Category?.name}</td>
-              <td className="px-6 py-4 text-sm">{product.Brand?.name}</td>
-              <td className="px-6 py-4 text-sm">{product.tipeMotor}</td>
-              <td className="px-6 py-4 text-sm">{product.tipeSize}</td>
-              <td className="px-6 py-4 text-sm">{product.currentStock}</td>
-              <td className="px-6 py-4 text-sm">{product.minThreshold}</td>
-              <td className="px-6 py-4 text-sm">
-                {product.hargaBeli !== null ? new Intl.NumberFormat('id-ID', {
-                  style: 'currency',
-                  currency: 'IDR',
-                  minimumFractionDigits: 0,
-                  maximumFractionDigits: 0
-                }).format(product.hargaBeli) : '-'}
-              </td>
-              <td className="px-6 py-4 text-sm">
-                {product.hargaJual !== null ? new Intl.NumberFormat('id-ID', {
-                  style: 'currency',
-                  currency: 'IDR',
-                  minimumFractionDigits: 0,
-                  maximumFractionDigits: 0
-                }).format(product.hargaJual) : '-'}
-              </td>
-              <td className="px-6 py-4 text-sm">{product.note}</td>
-              <td className="px-6 py-4 text-sm">
-                <button
-                  onClick={() => onEdit(product)}
-                  className="text-blue-500 hover:text-blue-600 mr-4"
-                >
-                  ✏️
-                </button>
-                <button
-                  onClick={() => onDelete(product.id)}
-                  className="text-red-500 hover:text-red-600"
-                >
-                  🗑️
-                </button>
-              </td>
+    <div className={`rounded-lg shadow w-full ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
+      <div className="overflow-x-auto w-full">
+        <table className="min-w-full w-full table-fixed">
+          <thead className={isDarkMode ? 'bg-gray-700' : 'bg-gray-100'}>
+            <tr>
+              <th className="px-3 py-3 text-left text-xs font-medium w-12">No</th>
+              <th className="px-3 py-3 text-left text-xs font-medium w-28">
+                {renderSortButton('Category', 'Category.name')}
+              </th>
+              <th className="px-3 py-3 text-left text-xs font-medium w-28">
+                {renderSortButton('Brand', 'Brand.name')}
+              </th>
+              <th className="px-3 py-3 text-left text-xs font-medium w-28">
+                {renderSortButton('Manufacturer', 'Motorcycle.manufacturer')}
+              </th>
+              <th className="px-3 py-3 text-left text-xs font-medium w-28">
+                {renderSortButton('Model', 'Motorcycle.model')}
+              </th>
+              <th className="px-3 py-3 text-left text-xs font-medium w-28">
+                {renderSortButton('Tipe/Size', 'tipeSize')}
+              </th>
+              <th className="px-3 py-3 text-left text-xs font-medium w-20">
+                {renderSortButton('Current', 'currentStock')}
+              </th>
+              <th className="px-3 py-3 text-left text-xs font-medium w-20">
+                {renderSortButton('Min', 'minThreshold')}
+              </th>
+              <th className="px-3 py-3 text-left text-xs font-medium w-24">
+                {renderSortButton('Harga Beli', 'hargaBeli')}
+              </th>
+              <th className="px-3 py-3 text-left text-xs font-medium w-24">
+                {renderSortButton('Harga Jual', 'hargaJual')}
+              </th>
+              <th className="px-3 py-3 text-left text-xs font-medium w-28">
+                {renderSortButton('Note', 'note')}
+              </th>
+              <th className="px-3 py-3 text-left text-xs font-medium w-20">Actions</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {products.map((product, index) => (
+              <tr key={product.id} className={`border-t ${isDarkMode ? 'border-gray-700 hover:bg-gray-700/50' : 'border-gray-200 hover:bg-gray-50'}`}>
+                <td className="px-3 py-3 text-xs whitespace-nowrap">{index + 1}</td>
+                <td className="px-3 py-3 text-xs whitespace-nowrap">{product.Category?.name}</td>
+                <td className="px-3 py-3 text-xs whitespace-nowrap">{product.Brand?.name}</td>
+                <td className="px-3 py-3 text-xs whitespace-nowrap">{product.Motorcycle?.manufacturer}</td>
+                <td className="px-3 py-3 text-xs whitespace-nowrap">{product.Motorcycle?.model}</td>
+                <td className="px-3 py-3 text-xs whitespace-nowrap">{product.tipeSize}</td>
+                <td className="px-3 py-3 text-xs whitespace-nowrap">{product.currentStock}</td>
+                <td className="px-3 py-3 text-xs whitespace-nowrap">{product.minThreshold}</td>
+                <td className="px-3 py-3 text-xs whitespace-nowrap">
+                  {product.hargaBeli !== null ? new Intl.NumberFormat('id-ID', {
+                    style: 'currency',
+                    currency: 'IDR',
+                    minimumFractionDigits: 0,
+                    maximumFractionDigits: 0
+                  }).format(product.hargaBeli) : '-'}
+                </td>
+                <td className="px-3 py-3 text-xs whitespace-nowrap">
+                  {product.hargaJual !== null ? new Intl.NumberFormat('id-ID', {
+                    style: 'currency',
+                    currency: 'IDR',
+                    minimumFractionDigits: 0,
+                    maximumFractionDigits: 0
+                  }).format(product.hargaJual) : '-'}
+                </td>
+                <td className="px-3 py-3 text-xs whitespace-nowrap">{product.note}</td>
+                <td className="px-3 py-3 text-xs whitespace-nowrap">
+                  <button
+                    onClick={() => onEdit(product)}
+                    className="text-blue-500 hover:text-blue-600 mr-2"
+                  >
+                    ✏️
+                  </button>
+                  <button
+                    onClick={() => onDelete(product.id)}
+                    className="text-red-500 hover:text-red-600"
+                  >
+                    🗑️
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 };

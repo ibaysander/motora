@@ -186,8 +186,10 @@ const ProductsTab: React.FC<ProductsTabProps> = ({
                   <option value="Brand.name:desc">Brand (Z-A)</option>
                 </optgroup>
                 <optgroup label="Product Info">
-                  <option value="tipeMotor:asc">Tipe Motor (A-Z)</option>
-                  <option value="tipeMotor:desc">Tipe Motor (Z-A)</option>
+                  <option value="Motorcycle.manufacturer:asc">Manufacturer (A-Z)</option>
+                  <option value="Motorcycle.manufacturer:desc">Manufacturer (Z-A)</option>
+                  <option value="Motorcycle.model:asc">Model (A-Z)</option>
+                  <option value="Motorcycle.model:desc">Model (Z-A)</option>
                   <option value="tipeSize:asc">Tipe/Size (A-Z)</option>
                   <option value="tipeSize:desc">Tipe/Size (Z-A)</option>
                 </optgroup>
@@ -218,34 +220,36 @@ const ProductsTab: React.FC<ProductsTabProps> = ({
       </div>
 
       {/* Product display */}
-      {viewMode === 'table' ? (
-        <ProductList
-          products={paginatedData}
-          onEdit={product => {
-            setSelectedProduct(product);
-            setIsUpdateModalOpen(true);
-          }}
-          onDelete={handleDeleteProduct}
-          isDarkMode={isDarkMode}
-          sortConfig={sortConfig}
-          onSort={requestSort}
-        />
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {paginatedData.map(product => (
-            <ProductCard
-              key={product.id}
-              product={product}
-              onEdit={() => {
-                setSelectedProduct(product);
-                setIsUpdateModalOpen(true);
-              }}
-              onDelete={handleDeleteProduct}
-              isDarkMode={isDarkMode}
-            />
-          ))}
-        </div>
-      )}
+      <div className="w-full overflow-hidden">
+        {viewMode === 'table' ? (
+          <ProductList
+            products={paginatedData}
+            onEdit={product => {
+              setSelectedProduct(product);
+              setIsUpdateModalOpen(true);
+            }}
+            onDelete={handleDeleteProduct}
+            isDarkMode={isDarkMode}
+            sortConfig={sortConfig}
+            onSort={requestSort}
+          />
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {paginatedData.map(product => (
+              <ProductCard
+                key={product.id}
+                product={product}
+                onEdit={() => {
+                  setSelectedProduct(product);
+                  setIsUpdateModalOpen(true);
+                }}
+                onDelete={handleDeleteProduct}
+                isDarkMode={isDarkMode}
+              />
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* Product Modals */}
       <ProductModal

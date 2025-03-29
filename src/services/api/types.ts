@@ -6,11 +6,27 @@ export namespace ApiTypes {
     status: number;
   }
 
+  // Motorcycle related types
+  export interface Motorcycle {
+    id: number;
+    manufacturer: string;
+    model: string | null;
+  }
+
+  export interface MotorcycleRequest {
+    manufacturer: string;
+    model: string | null;
+  }
+
+  export interface MotorcycleResponse extends ApiResponse<Motorcycle> {}
+  export interface MotorcyclesResponse extends ApiResponse<Motorcycle[]> {}
+
   // Product related types
   export interface Product {
     id: number;
     categoryId: number | null;
     brandId: number | null;
+    motorcycleId: number | null;
     Category?: {
       id: number;
       name: string;
@@ -19,7 +35,7 @@ export namespace ApiTypes {
       id: number;
       name: string;
     } | null;
-    tipeMotor: string | null;
+    Motorcycle?: Motorcycle | null;
     tipeSize: string | null;
     currentStock: number;
     minThreshold: number;
@@ -32,7 +48,7 @@ export namespace ApiTypes {
   export interface ProductRequest {
     categoryId: number | null;
     brandId: number | null;
-    tipeMotor: string | null;
+    motorcycleId: number | null;
     tipeSize: string | null;
     currentStock: number;
     minThreshold: number;
@@ -91,6 +107,8 @@ export namespace ApiTypes {
 export type Product = ApiTypes.Product;
 export type Category = ApiTypes.Category;
 export type Brand = ApiTypes.Brand;
+export type Motorcycle = ApiTypes.Motorcycle;
 export type ProductRequest = ApiTypes.ProductRequest;
 export type CategoryRequest = ApiTypes.CategoryRequest;
-export type BrandRequest = ApiTypes.BrandRequest; 
+export type BrandRequest = ApiTypes.BrandRequest;
+export type MotorcycleRequest = ApiTypes.MotorcycleRequest; 
