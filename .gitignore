@@ -24,4 +24,15 @@ yarn-debug.log*
 yarn-error.log*
 server/LIST.xlsx
 server/~$LIST.xlsx
-server/database.sqlite
+
+# Database files
+server/database/
+*.sqlite
+*.sqlite3
+*.db
+
+# Template and uploaded files
+server/data/
+server/uploads/
+*.xlsx
+.cursor/rules/motora.mdc

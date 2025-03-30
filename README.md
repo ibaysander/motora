@@ -1,6 +1,26 @@
-# Getting Started with Create React App
+# Motora - Motorcycle Parts Inventory System
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+This project is a motorcycle parts inventory management system with features for managing products, categories, brands, and motorcycle compatibility.
+
+## Architecture Decisions
+
+### Client-Side Pagination
+
+This application uses client-side pagination and filtering rather than server-side pagination. 
+
+**Benefits of this approach:**
+- **Faster UX:** Once data is loaded, page transitions and filtering are instant
+- **Works offline:** After initial load, all data is available for browsing without network requests
+- **Complex filtering:** Supports rich, multi-dimensional filtering without server roundtrips
+- **Simple API design:** Backend focuses on CRUD operations without complex query parameters
+
+**When to consider changing to server-side pagination:**
+- The dataset grows beyond several thousand records
+- Initial load time becomes unacceptably slow
+- Browser memory usage becomes problematic
+- Need to support extremely large datasets
+
+For further details on the pagination implementation, see the documentation in `src/hooks/useSortAndPagination.ts`.
 
 ## Available Scripts
 
@@ -31,13 +51,13 @@ See the section about [deployment](https://facebook.github.io/create-react-app/d
 
 ### `npm run eject`
 
-**Note: this is a one-way operation. Once you `eject`, you can’t go back!**
+**Note: this is a one-way operation. Once you `eject`, you can't go back!**
 
-If you aren’t satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you’re on your own.
+Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
 
-You don’t have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn’t feel obligated to use this feature. However we understand that this tool wouldn’t be useful if you couldn’t customize it when you are ready for it.
+You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
 
 ## Learn More
 

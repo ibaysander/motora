@@ -2,12 +2,13 @@ import { Model, DataTypes } from 'sequelize';
 import sequelize from '../config/database';
 import Category from './Category';
 import Brand from './Brand';
+import Motorcycle from './Motorcycle';
 
 class Product extends Model {
   public id!: number;
   public categoryId!: number;
   public brandId!: number;
-  public tipeMotor!: string | null;
+  public motorcycleId!: number | null;
   public tipeSize!: string | null;
   public hargaBeli!: number | null;
   public hargaJual!: number | null;
@@ -18,6 +19,7 @@ class Product extends Model {
   // Define associations
   public readonly category?: Category;
   public readonly brand?: Brand;
+  public readonly motorcycle?: Motorcycle;
 }
 
 Product.init(
@@ -45,10 +47,14 @@ Product.init(
         key: 'id',
       },
     },
-    tipeMotor: {
-      type: DataTypes.STRING,
+    motorcycleId: {
+      type: DataTypes.INTEGER,
       allowNull: true,
-      field: 'tipe_motor',
+      field: 'motorcycle_id',
+      references: {
+        model: 'motorcycles',
+        key: 'id',
+      },
     },
     tipeSize: {
       type: DataTypes.STRING,
@@ -93,5 +99,6 @@ Product.init(
 // Define associations
 Product.belongsTo(Category, { foreignKey: 'categoryId' });
 Product.belongsTo(Brand, { foreignKey: 'brandId' });
+Product.belongsTo(Motorcycle, { foreignKey: 'motorcycleId' });
 
 export default Product; 

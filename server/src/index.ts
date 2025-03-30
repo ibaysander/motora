@@ -4,17 +4,19 @@ import { initializeDatabase } from './config/initDb';
 import productRoutes from './routes/products';
 import categoryRoutes from './routes/categories';
 import brandRoutes from './routes/brands';
+import motorcycleRoutes from './routes/motorcycles';
 import multer from 'multer';
 import xlsx from 'xlsx';
-import { Product, Category, Brand } from './models';
+import { Product, Category, Brand, Motorcycle } from './models';
 import { Model, InferAttributes, InferCreationAttributes } from 'sequelize';
 import path from 'path';
+import productCompatibilityRoutes from './routes/productCompatibility';
 
 interface ProductWithAssociations extends Model<InferAttributes<ProductWithAssociations>, InferCreationAttributes<ProductWithAssociations>> {
   id: number;
   categoryId: number;
   brandId: number;
-  tipeMotor: string | null;
+  motorcycleId: number | null;
   tipeSize: string | null;
   hargaBeli: number | null;
   hargaJual: number | null;
@@ -26,6 +28,11 @@ interface ProductWithAssociations extends Model<InferAttributes<ProductWithAssoc
   };
   brand?: {
     name: string;
+  };
+  motorcycle?: {
+    manufacturer: string;
+    model: string | null;
+    type: string | null;
   };
 }
 
@@ -65,6 +72,8 @@ app.use(express.json());
 app.use('/api', productRoutes);
 app.use('/api', categoryRoutes);
 app.use('/api', brandRoutes);
+app.use('/api', motorcycleRoutes);
+app.use('/api', productCompatibilityRoutes);
 
 // Import Excel endpoint
 app.post('/api/import-excel', upload.single('file'), async (req, res) => {
@@ -86,6 +95,7 @@ app.post('/api/import-excel', upload.single('file'), async (req, res) => {
       let currentBrand: string | null = null;
       const categoryMap = new Map<string, number>();
       const brandMap = new Map<string, number>();
+      const motorcycleMap = new Map<string, number>();
 
       // Process each row
       for (const row of data as any[]) {
@@ -119,8 +129,36 @@ app.post('/api/import-excel', upload.single('file'), async (req, res) => {
             brandMap.set(currentBrand, brand.get('id') as number);
           }
 
-          // Create product
-          const tipeMotor = row['TIPE MOTOR'] ? String(row['TIPE MOTOR']).trim() : null;
+          // Extract motorcycle manufacturer and model from TIPE MOTOR
+          let motorcycleId = null;
+          
+          if (row['TIPE MOTOR']) {
+            const tipeMotor = String(row['TIPE MOTOR']).trim();
+            const parts = tipeMotor.split(' ');
+            
+            let manufacturer = '';
+            let model = null;
+            
+            if (parts.length >= 2) {
+              manufacturer = parts[0];
+              model = parts.slice(1).join(' ');
+            } else {
+              manufacturer = tipeMotor;
+            }
+            
+            const motorcycleKey = `${manufacturer}-${model || ''}`;
+            
+            if (!motorcycleMap.has(motorcycleKey)) {
+              const [motorcycle] = await Motorcycle.findOrCreate({
+                where: { manufacturer, model },
+                defaults: { manufacturer, model }
+              });
+              motorcycleMap.set(motorcycleKey, motorcycle.get('id') as number);
+            }
+            
+            motorcycleId = motorcycleMap.get(motorcycleKey) || null;
+          }
+
           const tipeSize = row['TIPE / SIZE'] ? String(row['TIPE / SIZE']).trim() : null;
           const hargaBeli = row['BELI'] ? Number(row['BELI']) : null;
           const hargaJual = row['JUAL'] ? Number(row['JUAL']) : null;
@@ -129,7 +167,7 @@ app.post('/api/import-excel', upload.single('file'), async (req, res) => {
           await Product.create({
             categoryId: categoryMap.get(currentCategory)!,
             brandId: brandMap.get(currentBrand)!,
-            tipeMotor,
+            motorcycleId,
             tipeSize,
             hargaBeli,
             hargaJual,
@@ -165,46 +203,65 @@ app.get('/api/export-excel', async (req, res) => {
     // Create workbook
     const workbook = xlsx.utils.book_new();
 
-    // Export Products sheet
-    const products = await Product.findAll({
+    // Get all data as plain objects to avoid Sequelize model issues
+    const rawProducts = await (Product as any).findAll({
       include: [
         { model: Category, as: 'category' },
-        { model: Brand, as: 'brand' }
-      ]
-    }) as unknown as ProductWithAssociations[];
+        { model: Brand, as: 'brand' },
+        { model: Motorcycle, as: 'motorcycle' }
+      ],
+      raw: true,
+      nest: true
+    });
 
-    const productsData = products.map(product => {
-      const productData = product.get({ plain: true });
-      return {
-        'NAMA PRODUK': productData.category?.name || '',
-        'MEREK': productData.brand?.name || '',
-        'TIPE MOTOR': productData.tipeMotor || '',
-        'TIPE / SIZE': productData.tipeSize || '',
-        'BELI': productData.hargaBeli || 0,
-        'JUAL': productData.hargaJual || 0,
-        'STOCK': productData.currentStock || 0,
-        'MIN STOCK': productData.minThreshold || 0,
-        'NOTE': productData.note || ''
+    console.log('Exported products length:', rawProducts.length);
+    
+    const productsData = rawProducts.map((product: any) => {
+      // Create tipeMotor to format exactly like the original data
+      let tipeMotor = '';
+      if (product.motorcycle) {
+        // If it's UNIVERSAL or any manufacturer with no model, just show the manufacturer
+        if (!product.motorcycle.model) {
+          tipeMotor = product.motorcycle.manufacturer;
+        } 
+        // Otherwise show both manufacturer and model
+        else {
+          tipeMotor = `${product.motorcycle.manufacturer} ${product.motorcycle.model}`.trim();
+        }
+      }
+      
+      // Format exactly like the original data
+      const result: any = {
+        'NAMA PRODUK': product.category?.name || '',
+        'MEREK': product.brand?.name || '',
+        'TIPE MOTOR': tipeMotor,
+        'TIPE / SIZE': product.tipeSize || '',
+        'BELI': product.hargaBeli || '',  // Use empty string instead of 0
+        'JUAL': product.hargaJual || '',  // Use empty string instead of 0
+        'PASANG': '',  // Add the PASANG column that was in the original
+        'NOTE': product.note || ''
       };
+      
+      return result;
     });
 
     const productsWorksheet = xlsx.utils.json_to_sheet(productsData);
     xlsx.utils.book_append_sheet(workbook, productsWorksheet, 'Products');
 
     // Export Categories sheet
-    const categories = await Category.findAll();
-    const categoriesData = categories.map(category => ({
-      'ID': category.get('id'),
-      'NAMA KATEGORI': category.get('name')
+    const categories = await (Category as any).findAll({ raw: true });
+    const categoriesData = categories.map((category: any) => ({
+      'ID': category.id,
+      'NAMA KATEGORI': category.name
     }));
     const categoriesWorksheet = xlsx.utils.json_to_sheet(categoriesData);
     xlsx.utils.book_append_sheet(workbook, categoriesWorksheet, 'Categories');
 
     // Export Brands sheet
-    const brands = await Brand.findAll();
-    const brandsData = brands.map(brand => ({
-      'ID': brand.get('id'),
-      'NAMA MEREK': brand.get('name')
+    const brands = await (Brand as any).findAll({ raw: true });
+    const brandsData = brands.map((brand: any) => ({
+      'ID': brand.id,
+      'NAMA MEREK': brand.name
     }));
     const brandsWorksheet = xlsx.utils.json_to_sheet(brandsData);
     xlsx.utils.book_append_sheet(workbook, brandsWorksheet, 'Brands');
@@ -219,7 +276,7 @@ app.get('/api/export-excel', async (req, res) => {
     res.send(excelBuffer);
   } catch (error) {
     console.error('Error exporting data:', error);
-    res.status(500).json({ error: 'Failed to export data' });
+    res.status(500).json({ error: 'Failed to export data', details: String(error) });
   }
 });
 

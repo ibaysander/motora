@@ -5,25 +5,52 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    ports:
-      - "0.0.0.0:3000:80"
+    expose:
+      - 80
     depends_on:
       - backend
     environment:
       - NODE_ENV=${NODE_ENV:-development}
-      - REACT_APP_API_URL=${REACT_APP_API_URL:-http://labrat-vm:3001/api}
+      - REACT_APP_API_URL=${REACT_APP_API_URL:-/api}
+      - NODE_OPTIONS=--max-old-space-size=256
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
+    restart: unless-stopped
+    networks:
+      - proxy-network
 
   backend:
     build:
       context: ./server
       dockerfile: Dockerfile
-    ports:
-      - "0.0.0.0:3001:3001"
+    expose:
+      - 3001
     volumes:
-      - type: bind
-        source: ./server/database
-        target: /app/database
-        read_only: false
+      - db_data:/app/database
     environment:
       - NODE_ENV=${NODE_ENV:-development}
-      - PORT=3001 
+      - PORT=3001
+      - NODE_OPTIONS=--max-old-space-size=512
+    user: node
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+        reservations:
+          memory: 512M
+    restart: unless-stopped
+    networks:
+      - proxy-network
+
+volumes:
+  db_data:
+    name: motora_db_data
+    driver: local
+
+networks:
+  proxy-network:
+    external: true

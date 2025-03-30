@@ -6,10 +6,10 @@ RUN apk add --no-cache sqlite sqlite-dev python3 make g++
 # Create app directory
 WORKDIR /app
 
-# Create database directory with proper permissions
-RUN mkdir -p /app/database && \
-    chown -R node:node /app/database && \
-    chmod -R 777 /app/database
+# Create database and uploads directories with proper permissions
+RUN mkdir -p /app/database /app/uploads && \
+    chown -R node:node /app/database /app/uploads && \
+    chmod -R 777 /app/database /app/uploads
 
 # Copy package files
 COPY package*.json ./
