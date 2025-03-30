@@ -1,4 +1,4 @@
-import React, { ChangeEvent } from 'react';
+import React, { ChangeEvent, useMemo } from 'react';
 import { Category } from '../../hooks/useApi';
 
 interface AlphabeticalFilterProps {
@@ -62,6 +62,32 @@ export const CategoryFilter: React.FC<CategoryFilterProps> = ({
   setFilter,
   isDarkMode
 }) => {
+  // Group categories by first letter
+  const groupedCategories = useMemo(() => {
+    // Sort categories alphabetically
+    const sortedCategories = [...categories].sort((a, b) => 
+      a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })
+    );
+    
+    // Group by first letter
+    const grouped: Record<string, Category[]> = {};
+    
+    sortedCategories.forEach(category => {
+      const firstLetter = category.name.charAt(0).toUpperCase();
+      if (!grouped[firstLetter]) {
+        grouped[firstLetter] = [];
+      }
+      grouped[firstLetter].push(category);
+    });
+    
+    return grouped;
+  }, [categories]);
+
+  // Get all unique first letters in alphabetical order
+  const alphabet = useMemo(() => 
+    Object.keys(groupedCategories).sort(),
+  [groupedCategories]);
+
   return (
     <div className="flex items-center space-x-2">
       <span className="text-sm">Category:</span>
@@ -71,10 +97,21 @@ export const CategoryFilter: React.FC<CategoryFilterProps> = ({
         className={`border rounded-lg p-2 text-sm ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'}`}
       >
         <option value="">All Categories</option>
-        {[...categories].sort((a, b) => a.name.localeCompare(b.name)).map(category => (
-          <option key={category.id} value={category.id}>
-            {category.name}
-          </option>
+        
+        {alphabet.map(letter => (
+          <React.Fragment key={letter}>
+            {/* Add a divider with the letter */}
+            <option disabled className={`font-bold ${isDarkMode ? 'bg-gray-600' : 'bg-gray-100'}`}>
+              --- {letter} ---
+            </option>
+            
+            {/* Add all categories starting with this letter */}
+            {groupedCategories[letter].map(category => (
+              <option key={category.id} value={category.id}>
+                {category.name}
+              </option>
+            ))}
+          </React.Fragment>
         ))}
       </select>
     </div>

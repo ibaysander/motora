@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Category, Product } from '../../hooks/useApi';
 import { SortConfig, PaginationConfig } from '../../features/products';
 import { CategoryCard } from '../../features/categories';
 import { CategoryViewToggle } from '../ui/ViewToggles';
 import { PaginationLimitSelector, PaginationButtons } from '../ui/Pagination';
 import CategoryModal from '../ui/CategoryModal';
+import { AlphabeticalFilter } from '../ui/Filters';
 
 interface CategoriesTabProps {
   products: Product[];
@@ -33,6 +34,8 @@ interface CategoriesTabProps {
   handleUpdateCategory: () => void;
   handleDeleteCategory: (id: number) => void;
   itemsPerPageOptions: number[];
+  alphabeticalFilter: string | null;
+  setAlphabeticalFilter: (filter: string | null) => void;
 }
 
 const CategoriesTab: React.FC<CategoriesTabProps> = ({
@@ -61,9 +64,23 @@ const CategoriesTab: React.FC<CategoriesTabProps> = ({
   handleAddCategory,
   handleUpdateCategory,
   handleDeleteCategory,
-  itemsPerPageOptions
+  itemsPerPageOptions,
+  alphabeticalFilter,
+  setAlphabeticalFilter
 }) => {
   const [selectedItems, setSelectedItems] = useState<number[]>([]);
+
+  // Filter categories by first letter if alphabetical filter is active
+  const alphabeticallyFilteredCategories = categories.filter(category => {
+    if (!alphabeticalFilter) return true;
+    return category.name.toUpperCase().startsWith(alphabeticalFilter);
+  });
+  
+  // Apply search after alphabetical filtering
+  const searchFilteredCategories = alphabeticallyFilteredCategories.filter(category => {
+    if (!searchQuery) return true;
+    return category.name.toLowerCase().includes(searchQuery.toLowerCase());
+  });
 
   // Handle bulk selection
   const toggleSelectAll = () => {
@@ -112,16 +129,33 @@ const CategoriesTab: React.FC<CategoriesTabProps> = ({
             setViewMode={setCategoryViewMode}
             isDarkMode={isDarkMode}
           />
-          <button
-            onClick={() => setIsCategoryModalOpen(true)}
-            className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
-          >
-            Add Category
-          </button>
+          {selectedItems.length > 0 ? (
+            <button
+              onClick={handleBulkDelete}
+              className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600"
+            >
+              Delete Selected ({selectedItems.length})
+            </button>
+          ) : (
+            <button
+              onClick={() => setIsCategoryModalOpen(true)}
+              className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+            >
+              Add Category
+            </button>
+          )}
         </div>
       </header>
 
       <div className="mb-6">
+        {/* Alphabetical Filter */}
+        <AlphabeticalFilter
+          currentFilter={alphabeticalFilter}
+          setFilter={setAlphabeticalFilter}
+          isDarkMode={isDarkMode}
+          type="categories"
+        />
+        
         <div className="flex flex-wrap gap-4 mb-4">
           <div className="flex-1">
             <input
@@ -194,65 +228,67 @@ const CategoriesTab: React.FC<CategoriesTabProps> = ({
 
       {/* Categories display */}
       {categoryViewMode === 'table' ? (
-        <div className="bg-white rounded-lg shadow overflow-hidden">
-          <table className={`min-w-full rounded-lg shadow ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
-            <thead className={isDarkMode ? 'bg-gray-700' : 'bg-gray-100'}>
-              <tr>
-                <th className="px-3 py-3 text-left text-xs font-medium w-8">
-                  <input
-                    type="checkbox"
-                    checked={paginatedData.length > 0 && selectedItems.length === paginatedData.length}
-                    onChange={toggleSelectAll}
-                    className="rounded"
-                  />
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium">No</th>
-                <th className="px-6 py-3 text-left text-xs font-medium">
-                  <button
-                    onClick={() => requestSort('name')}
-                    className="flex items-center gap-1 hover:bg-opacity-10 hover:bg-gray-500 px-1 py-0.5 rounded"
-                  >
-                    Name
-                    <span className="text-xs">{getSortIcon('name')}</span>
-                  </button>
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {paginatedData.map((category, index) => (
-                <tr key={category.id} className={`border-t ${isDarkMode ? 'border-gray-700 hover:bg-gray-700/50' : 'border-gray-200 hover:bg-gray-50'}`}>
-                  <td className="px-3 py-4 text-center">
+        <div className="w-full overflow-hidden">
+          <div className={`rounded-lg shadow ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className={isDarkMode ? 'bg-gray-700' : 'bg-gray-100'}>
+                <tr>
+                  <th className="px-3 py-3 text-left text-xs font-medium w-8">
                     <input
                       type="checkbox"
-                      checked={selectedItems.includes(category.id)}
-                      onChange={() => toggleSelectItem(category.id)}
+                      checked={paginatedData.length > 0 && selectedItems.length === paginatedData.length}
+                      onChange={toggleSelectAll}
                       className="rounded"
                     />
-                  </td>
-                  <td className="px-6 py-4 text-sm">{index + 1}</td>
-                  <td className="px-6 py-4 text-sm">{category.name}</td>
-                  <td className="px-6 py-4 text-sm">
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium">No</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium">
                     <button
-                      onClick={() => {
-                        setSelectedCategory(category);
-                        setIsCategoryModalOpen(true);
-                      }}
-                      className="text-blue-500 hover:text-blue-600 mr-4"
+                      onClick={() => requestSort('name')}
+                      className="flex items-center gap-1 hover:bg-opacity-10 hover:bg-gray-500 px-1 py-0.5 rounded"
                     >
-                      ✏️
+                      Name
+                      <span className="text-xs">{getSortIcon('name')}</span>
                     </button>
-                    <button
-                      onClick={() => handleDeleteCategory(category.id)}
-                      className="text-red-500 hover:text-red-600"
-                    >
-                      🗑️
-                    </button>
-                  </td>
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium">Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {paginatedData.map((category, index) => (
+                  <tr key={category.id} className={`border-t ${isDarkMode ? 'border-gray-700 hover:bg-gray-700/50' : 'border-gray-200 hover:bg-gray-50'}`}>
+                    <td className="px-3 py-4 text-center">
+                      <input
+                        type="checkbox"
+                        checked={selectedItems.includes(category.id)}
+                        onChange={() => toggleSelectItem(category.id)}
+                        className="rounded"
+                      />
+                    </td>
+                    <td className="px-6 py-4 text-sm">{index + 1}</td>
+                    <td className="px-6 py-4 text-sm">{category.name}</td>
+                    <td className="px-6 py-4 text-sm">
+                      <button
+                        onClick={() => {
+                          setSelectedCategory(category);
+                          setIsCategoryModalOpen(true);
+                        }}
+                        className="text-blue-500 hover:text-blue-600 mr-4"
+                      >
+                        ✏️
+                      </button>
+                      <button
+                        onClick={() => handleDeleteCategory(category.id)}
+                        className="text-red-500 hover:text-red-600"
+                      >
+                        🗑️
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

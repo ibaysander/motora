@@ -5,6 +5,7 @@ import { BrandCard } from '../../features/brands';
 import { BrandViewToggle } from '../ui/ViewToggles';
 import { PaginationLimitSelector, PaginationButtons } from '../ui/Pagination';
 import BrandModal from '../ui/BrandModal';
+import { AlphabeticalFilter } from '../ui/Filters';
 
 interface BrandsTabProps {
   products: Product[];
@@ -33,6 +34,8 @@ interface BrandsTabProps {
   handleUpdateBrand: () => void;
   handleDeleteBrand: (id: number) => void;
   itemsPerPageOptions: number[];
+  alphabeticalFilter: string | null;
+  setAlphabeticalFilter: (filter: string | null) => void;
 }
 
 const BrandsTab: React.FC<BrandsTabProps> = ({
@@ -61,7 +64,9 @@ const BrandsTab: React.FC<BrandsTabProps> = ({
   handleAddBrand,
   handleUpdateBrand,
   handleDeleteBrand,
-  itemsPerPageOptions
+  itemsPerPageOptions,
+  alphabeticalFilter,
+  setAlphabeticalFilter
 }) => {
   const [selectedItems, setSelectedItems] = useState<number[]>([]);
 
@@ -122,6 +127,14 @@ const BrandsTab: React.FC<BrandsTabProps> = ({
       </header>
 
       <div className="mb-6">
+        {/* Alphabetical Filter */}
+        <AlphabeticalFilter
+          currentFilter={alphabeticalFilter}
+          setFilter={setAlphabeticalFilter}
+          isDarkMode={isDarkMode}
+          type="brands"
+        />
+        
         <div className="flex flex-wrap gap-4 mb-4">
           <div className="flex-1">
             <input
@@ -194,65 +207,67 @@ const BrandsTab: React.FC<BrandsTabProps> = ({
 
       {/* Brands display */}
       {brandViewMode === 'table' ? (
-        <div className="bg-white rounded-lg shadow overflow-hidden">
-          <table className={`min-w-full rounded-lg shadow ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
-            <thead className={isDarkMode ? 'bg-gray-700' : 'bg-gray-100'}>
-              <tr>
-                <th className="px-3 py-3 text-left text-xs font-medium w-8">
-                  <input
-                    type="checkbox"
-                    checked={paginatedData.length > 0 && selectedItems.length === paginatedData.length}
-                    onChange={toggleSelectAll}
-                    className="rounded"
-                  />
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium">No</th>
-                <th className="px-6 py-3 text-left text-xs font-medium">
-                  <button
-                    onClick={() => requestSort('name')}
-                    className="flex items-center gap-1 hover:bg-opacity-10 hover:bg-gray-500 px-1 py-0.5 rounded"
-                  >
-                    Name
-                    <span className="text-xs">{getSortIcon('name')}</span>
-                  </button>
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {paginatedData.map((brand, index) => (
-                <tr key={brand.id} className={`border-t ${isDarkMode ? 'border-gray-700 hover:bg-gray-700/50' : 'border-gray-200 hover:bg-gray-50'}`}>
-                  <td className="px-3 py-4 text-center">
+        <div className="w-full overflow-hidden">
+          <div className={`rounded-lg shadow ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className={isDarkMode ? 'bg-gray-700' : 'bg-gray-100'}>
+                <tr>
+                  <th className="px-3 py-3 text-left text-xs font-medium w-8">
                     <input
                       type="checkbox"
-                      checked={selectedItems.includes(brand.id)}
-                      onChange={() => toggleSelectItem(brand.id)}
+                      checked={paginatedData.length > 0 && selectedItems.length === paginatedData.length}
+                      onChange={toggleSelectAll}
                       className="rounded"
                     />
-                  </td>
-                  <td className="px-6 py-4 text-sm">{((paginationConfig.currentPage - 1) * paginationConfig.itemsPerPage) + index + 1}</td>
-                  <td className="px-6 py-4 text-sm">{brand.name}</td>
-                  <td className="px-6 py-4 text-sm">
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium">No</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium">
                     <button
-                      onClick={() => {
-                        setSelectedBrand(brand);
-                        setIsBrandModalOpen(true);
-                      }}
-                      className="text-blue-500 hover:text-blue-600 mr-4"
+                      onClick={() => requestSort('name')}
+                      className="flex items-center gap-1 hover:bg-opacity-10 hover:bg-gray-500 px-1 py-0.5 rounded"
                     >
-                      ✏️
+                      Name
+                      <span className="text-xs">{getSortIcon('name')}</span>
                     </button>
-                    <button
-                      onClick={() => handleDeleteBrand(brand.id)}
-                      className="text-red-500 hover:text-red-600"
-                    >
-                      🗑️
-                    </button>
-                  </td>
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium">Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {paginatedData.map((brand, index) => (
+                  <tr key={brand.id} className={`border-t ${isDarkMode ? 'border-gray-700 hover:bg-gray-700/50' : 'border-gray-200 hover:bg-gray-50'}`}>
+                    <td className="px-3 py-4 text-center">
+                      <input
+                        type="checkbox"
+                        checked={selectedItems.includes(brand.id)}
+                        onChange={() => toggleSelectItem(brand.id)}
+                        className="rounded"
+                      />
+                    </td>
+                    <td className="px-6 py-4 text-sm">{((paginationConfig.currentPage - 1) * paginationConfig.itemsPerPage) + index + 1}</td>
+                    <td className="px-6 py-4 text-sm">{brand.name}</td>
+                    <td className="px-6 py-4 text-sm">
+                      <button
+                        onClick={() => {
+                          setSelectedBrand(brand);
+                          setIsBrandModalOpen(true);
+                        }}
+                        className="text-blue-500 hover:text-blue-600 mr-4"
+                      >
+                        ✏️
+                      </button>
+                      <button
+                        onClick={() => handleDeleteBrand(brand.id)}
+                        className="text-red-500 hover:text-red-600"
+                      >
+                        🗑️
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

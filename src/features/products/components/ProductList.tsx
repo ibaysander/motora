@@ -108,9 +108,9 @@ const ProductList: React.FC<ProductListProps> = ({ products, onEdit, onDelete, i
   };
 
   return (
-    <div className={`rounded-lg shadow w-full ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
-      <div className="overflow-x-auto w-full">
-        <table className="min-w-full w-full table-fixed">
+    <div className="w-full overflow-hidden">
+      <div className={`rounded-lg shadow ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
+        <table className="min-w-full divide-y divide-gray-200">
           <thead className={isDarkMode ? 'bg-gray-700' : 'bg-gray-100'}>
             <tr>
               <th className="px-3 py-3 text-left text-xs font-medium w-12">No</th>
@@ -144,7 +144,7 @@ const ProductList: React.FC<ProductListProps> = ({ products, onEdit, onDelete, i
               <th className="px-3 py-3 text-left text-xs font-medium w-20">Actions</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody className="divide-y divide-gray-200">
             {products.map((product, index) => {
               const isLowStock = product.currentStock <= product.minThreshold;
               return (

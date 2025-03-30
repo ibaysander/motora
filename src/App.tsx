@@ -114,8 +114,11 @@ const AppContent: FC = () => {
     minThreshold: 0
   });
 
-  // Add new state for alphabetical filter
+  // Add new state for alphabetical filters
   const [alphabeticalFilter, setAlphabeticalFilter] = useState<string | null>(null);
+  const [categoryAlphabeticalFilter, setCategoryAlphabeticalFilter] = useState<string | null>(null);
+  const [brandAlphabeticalFilter, setBrandAlphabeticalFilter] = useState<string | null>(null);
+  const [motorcycleAlphabeticalFilter, setMotorcycleAlphabeticalFilter] = useState<string | null>(null);
 
   // Add new state for category filter
   const [categoryFilter, setCategoryFilter] = useState<number | null>(null);
@@ -298,33 +301,38 @@ const AppContent: FC = () => {
     }
   };
 
-  // Add filtered products based on search and category
+  // Filter products by category filter
   const filteredProducts = products.filter((product: Product) => {
-    const matchesSearch = searchQuery.toLowerCase() === '' ||
-      (product.Motorcycle && 
-        ((product.Motorcycle.manufacturer && 
-          product.Motorcycle.manufacturer.toLowerCase().includes(searchQuery.toLowerCase())) ||
-         (product.Motorcycle.model && 
-          product.Motorcycle.model.toLowerCase().includes(searchQuery.toLowerCase()))
-        )) ||
-      (product.tipeSize && product.tipeSize.toLowerCase().includes(searchQuery.toLowerCase()));
-
-    const matchesCategory = !categoryFilter || product.categoryId === categoryFilter;
-
-    return matchesSearch && matchesCategory;
+    // Apply category filter
+    const matchesCategory = categoryFilter === null || product.categoryId === categoryFilter;
+    return matchesCategory;
   });
 
-  // Add filtered categories based on search
-  const filteredCategories = categories.filter((category: Category) =>
-    searchQuery.toLowerCase() === '' ||
-    category.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Filter categories by both search and alphabetical filter
+  const filteredCategories = categories.filter((category: Category) => {
+    // Filter by first letter if alphabetical filter is active
+    const matchesAlphabetical = !categoryAlphabeticalFilter || 
+      category.name.toUpperCase().startsWith(categoryAlphabeticalFilter);
+    
+    // Filter by search query
+    const matchesSearch = searchQuery.toLowerCase() === '' ||
+      category.name.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    return matchesAlphabetical && matchesSearch;
+  });
 
-  // Add filtered brands based on search
-  const filteredBrands = brands.filter((brand: Brand) =>
-    searchQuery.toLowerCase() === '' ||
-    brand.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Filter brands by both search and alphabetical filter
+  const filteredBrands = brands.filter((brand: Brand) => {
+    // Filter by first letter if alphabetical filter is active
+    const matchesAlphabetical = !brandAlphabeticalFilter || 
+      brand.name.toUpperCase().startsWith(brandAlphabeticalFilter);
+    
+    // Filter by search query
+    const matchesSearch = searchQuery.toLowerCase() === '' ||
+      brand.name.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    return matchesAlphabetical && matchesSearch;
+  });
 
   // Use sortAndPagination hooks for each type
   const productSortAndPagination = useSortAndPagination({
@@ -347,6 +355,10 @@ const AppContent: FC = () => {
 
   // Render content based on current tab
   const renderContent = () => {
+    if (!isAuthenticated) {
+      return <Login onLogin={handleLogin} isDarkMode={isDarkMode} />;
+    }
+
     switch (currentTab) {
       case 'products':
         return (
@@ -387,6 +399,8 @@ const AppContent: FC = () => {
             isExporting={isExporting}
             setIsDarkMode={setIsDarkMode}
             itemsPerPageOptions={itemsPerPageOptions}
+            alphabeticalFilter={alphabeticalFilter}
+            setAlphabeticalFilter={setAlphabeticalFilter}
           />
         );
       
@@ -419,6 +433,8 @@ const AppContent: FC = () => {
             handleUpdateCategory={handleUpdateCategory}
             handleDeleteCategory={handleDeleteCategory}
             itemsPerPageOptions={itemsPerPageOptions}
+            alphabeticalFilter={categoryAlphabeticalFilter}
+            setAlphabeticalFilter={setCategoryAlphabeticalFilter}
           />
         );
       
@@ -451,6 +467,8 @@ const AppContent: FC = () => {
             handleUpdateBrand={handleUpdateBrand}
             handleDeleteBrand={handleDeleteBrand}
             itemsPerPageOptions={itemsPerPageOptions}
+            alphabeticalFilter={brandAlphabeticalFilter}
+            setAlphabeticalFilter={setBrandAlphabeticalFilter}
           />
         );
 
@@ -458,8 +476,9 @@ const AppContent: FC = () => {
         return (
           <MotorcyclesTab
             isDarkMode={isDarkMode}
-            setIsDarkMode={setIsDarkMode}
             products={products}
+            alphabeticalFilter={motorcycleAlphabeticalFilter}
+            setAlphabeticalFilter={setMotorcycleAlphabeticalFilter}
           />
         );
 
@@ -471,11 +490,6 @@ const AppContent: FC = () => {
         );
     }
   };
-
-  // If not authenticated, show login page
-  if (!isAuthenticated) {
-    return <Login onLogin={handleLogin} isDarkMode={isDarkMode} />;
-  }
 
   return (
     <AppLayout onLogout={handleLogout}>

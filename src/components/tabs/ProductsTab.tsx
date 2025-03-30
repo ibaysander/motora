@@ -40,12 +40,14 @@ interface ProductsTabProps {
   handleAddProduct: () => void;
   handleUpdateProduct: () => void;
   handleDeleteProduct: (id: number) => void;
-  handleImportExcel: (e: ChangeEvent<HTMLInputElement>) => void;
+  handleImportExcel: (event: React.ChangeEvent<HTMLInputElement>) => Promise<void>;
   handleExport: () => void;
   isImporting: boolean;
   isExporting: boolean;
   setIsDarkMode: (isDark: boolean) => void;
   itemsPerPageOptions: number[];
+  alphabeticalFilter: string | null;
+  setAlphabeticalFilter: (filter: string | null) => void;
 }
 
 const ProductsTab: React.FC<ProductsTabProps> = ({
@@ -84,7 +86,9 @@ const ProductsTab: React.FC<ProductsTabProps> = ({
   isImporting,
   isExporting,
   setIsDarkMode,
-  itemsPerPageOptions
+  itemsPerPageOptions,
+  alphabeticalFilter,
+  setAlphabeticalFilter
 }) => {
   const [productCompatibility, setProductCompatibility] = useState<{[key: number]: Motorcycle[]}>({});
   

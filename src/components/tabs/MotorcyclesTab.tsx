@@ -4,67 +4,158 @@ import { Motorcycle, Product, SortConfig, PaginationConfig } from '../../feature
 import { MotorcycleCard } from '../../features/motorcycles';
 import { MotorcycleViewToggle } from '../ui/ViewToggles';
 import { PaginationLimitSelector, PaginationButtons } from '../ui/Pagination';
+import { AlphabeticalFilter } from '../ui/Filters';
 
 interface MotorcyclesTabProps {
   isDarkMode: boolean;
-  setIsDarkMode: (isDark: boolean) => void;
-  products: Product[];
+  alphabeticalFilter: string | null;
+  setAlphabeticalFilter: (filter: string | null) => void;
+  products?: Product[];
+  motorcycles?: Motorcycle[];
+  searchQuery?: string;
+  setSearchQuery?: (query: string) => void;
+  motorcycleViewMode?: 'table' | 'card';
+  setMotorcycleViewMode?: (mode: 'table' | 'card') => void;
+  paginationConfig?: PaginationConfig;
+  sortConfig?: SortConfig;
+  handleItemsPerPageChange?: (itemsPerPage: number) => void;
+  handlePageChange?: (page: number) => void;
+  getSortIcon?: (key: string) => string;
+  requestSort?: (key: string) => void;
+  paginatedData?: Motorcycle[];
+  totalPages?: number;
+  filteredMotorcycles?: Motorcycle[];
+  newMotorcycle?: Partial<Motorcycle>;
+  setNewMotorcycle?: (motorcycle: Partial<Motorcycle>) => void;
+  selectedMotorcycle?: Motorcycle | null;
+  setSelectedMotorcycle?: (motorcycle: Motorcycle | null) => void;
+  isMotorcycleModalOpen?: boolean;
+  setIsMotorcycleModalOpen?: (isOpen: boolean) => void;
+  handleAddMotorcycle?: () => void;
+  handleUpdateMotorcycle?: () => void;
+  handleDeleteMotorcycle?: (id: number) => void;
+  itemsPerPageOptions?: number[];
 }
 
 const MotorcyclesTab: React.FC<MotorcyclesTabProps> = ({
+  motorcycles: propMotorcycles,
   isDarkMode,
-  setIsDarkMode,
+  searchQuery: propSearchQuery,
+  setSearchQuery: propSetSearchQuery,
+  motorcycleViewMode: propMotorcycleViewMode,
+  setMotorcycleViewMode: propSetMotorcycleViewMode,
+  paginationConfig: propPaginationConfig,
+  sortConfig: propSortConfig,
+  handleItemsPerPageChange: propHandleItemsPerPageChange,
+  handlePageChange: propHandlePageChange,
+  getSortIcon: propGetSortIcon,
+  requestSort: propRequestSort,
+  paginatedData: propPaginatedData,
+  totalPages: propTotalPages,
+  filteredMotorcycles: propFilteredMotorcycles,
+  newMotorcycle: propNewMotorcycle,
+  setNewMotorcycle: propSetNewMotorcycle,
+  selectedMotorcycle: propSelectedMotorcycle,
+  setSelectedMotorcycle: propSetSelectedMotorcycle,
+  isMotorcycleModalOpen: propIsMotorcycleModalOpen,
+  setIsMotorcycleModalOpen: propSetIsMotorcycleModalOpen,
+  handleAddMotorcycle: propHandleAddMotorcycle,
+  handleUpdateMotorcycle: propHandleUpdateMotorcycle,
+  handleDeleteMotorcycle: propHandleDeleteMotorcycle,
+  itemsPerPageOptions: propItemsPerPageOptions,
+  alphabeticalFilter,
+  setAlphabeticalFilter,
   products
 }) => {
-  const [motorcycles, setMotorcycles] = useState<Motorcycle[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [currentMotorcycle, setCurrentMotorcycle] = useState<Partial<Motorcycle>>({
-    manufacturer: '',
-    model: ''
-  });
-  const [isEditing, setIsEditing] = useState(false);
   const [selectedItems, setSelectedItems] = useState<number[]>([]);
   
-  // Pagination and Sorting
-  const [viewMode, setViewMode] = useState<'table' | 'card'>('table');
-  const [paginationConfig, setPaginationConfig] = useState<PaginationConfig>({
+  // Local state to handle when props aren't provided
+  const [localMotorcycles, setLocalMotorcycles] = useState<Motorcycle[]>([]);
+  const [localSearchQuery, setLocalSearchQuery] = useState('');
+  const [localViewMode, setLocalViewMode] = useState<'table' | 'card'>('table');
+  const [localPaginationConfig, setLocalPaginationConfig] = useState<PaginationConfig>({
     currentPage: 1,
     itemsPerPage: 10
   });
-  const [sortConfig, setSortConfig] = useState<SortConfig>({
+  const [localSortConfig, setLocalSortConfig] = useState<SortConfig>({
     key: 'manufacturer',
     direction: 'asc'
   });
-  const itemsPerPageOptions = [5, 10, 20, 50];
-
+  const [localNewMotorcycle, setLocalNewMotorcycle] = useState<Partial<Motorcycle>>({
+    manufacturer: '',
+    model: ''
+  });
+  const [localSelectedMotorcycle, setLocalSelectedMotorcycle] = useState<Motorcycle | null>(null);
+  const [localIsModalOpen, setLocalIsModalOpen] = useState(false);
+  
+  const localItemsPerPageOptions = [5, 10, 20, 50];
+  
+  // Use provided props or local state
+  const motorcycles = propMotorcycles || localMotorcycles;
+  const searchQuery = propSearchQuery || localSearchQuery;
+  const setSearchQuery = propSetSearchQuery || setLocalSearchQuery;
+  const motorcycleViewMode = propMotorcycleViewMode || localViewMode;
+  const setMotorcycleViewMode = propSetMotorcycleViewMode || setLocalViewMode;
+  const paginationConfig = propPaginationConfig || localPaginationConfig;
+  const sortConfig = propSortConfig || localSortConfig;
+  const newMotorcycle = propNewMotorcycle || localNewMotorcycle;
+  const setNewMotorcycle = propSetNewMotorcycle || setLocalNewMotorcycle;
+  const selectedMotorcycle = propSelectedMotorcycle || localSelectedMotorcycle;
+  const setSelectedMotorcycle = propSetSelectedMotorcycle || setLocalSelectedMotorcycle;
+  const isMotorcycleModalOpen = propIsMotorcycleModalOpen !== undefined ? propIsMotorcycleModalOpen : localIsModalOpen;
+  const setIsMotorcycleModalOpen = propSetIsMotorcycleModalOpen || setLocalIsModalOpen;
+  const itemsPerPageOptions = propItemsPerPageOptions || localItemsPerPageOptions;
+  
   // Fetch motorcycles on component mount
   useEffect(() => {
     fetchMotorcycles();
   }, []);
 
-  // Fetch motorcycles from the API
-  const fetchMotorcycles = async () => {
-    setIsLoading(true);
-    try {
-      const response = await axios.get('/api/motorcycles');
-      setMotorcycles(response.data);
-    } catch (error) {
-      console.error('Error fetching motorcycles:', error);
-    } finally {
-      setIsLoading(false);
-    }
+  // Local handlers
+  const handleLocalItemsPerPageChange = (itemsPerPage: number) => {
+    setLocalPaginationConfig({
+      currentPage: 1,
+      itemsPerPage
+    });
   };
-
-  // Filter motorcycles based on search query
-  const filteredMotorcycles = motorcycles.filter(motorcycle => 
-    motorcycle.manufacturer.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (motorcycle.model && motorcycle.model.toLowerCase().includes(searchQuery.toLowerCase()))
-  );
-
+  
+  const handleLocalPageChange = (page: number) => {
+    setLocalPaginationConfig({
+      ...localPaginationConfig,
+      currentPage: page
+    });
+  };
+  
+  const localGetSortIcon = (key: string) => {
+    if (sortConfig.key !== key) return '↕️';
+    return sortConfig.direction === 'asc' ? '↑' : '↓';
+  };
+  
+  const localRequestSort = (key: string) => {
+    let direction: 'asc' | 'desc' = 'asc';
+    if (localSortConfig.key === key && localSortConfig.direction === 'asc') {
+      direction = 'desc';
+    }
+    setLocalSortConfig({ key, direction });
+  };
+  
+  // Filtering and sorting
+  const alphabeticallyFilteredMotorcycles = motorcycles?.filter(motorcycle => {
+    if (!alphabeticalFilter) return true;
+    return motorcycle.manufacturer.toUpperCase().startsWith(alphabeticalFilter);
+  }) || [];
+  
+  const searchFilteredMotorcycles = alphabeticallyFilteredMotorcycles.filter(motorcycle => {
+    if (!searchQuery) return true;
+    return (
+      motorcycle.manufacturer.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (motorcycle.model && motorcycle.model.toLowerCase().includes(searchQuery.toLowerCase()))
+    );
+  });
+  
   // Sorting function
-  const sortedMotorcycles = [...filteredMotorcycles].sort((a, b) => {
+  const sortedMotorcycles = [...searchFilteredMotorcycles].sort((a, b) => {
     if (sortConfig.key === 'manufacturer') {
       return sortConfig.direction === 'asc'
         ? a.manufacturer.localeCompare(b.manufacturer)
@@ -78,40 +169,92 @@ const MotorcyclesTab: React.FC<MotorcyclesTabProps> = ({
     }
     return 0;
   });
-
+  
   // Pagination
-  const totalPages = Math.ceil(sortedMotorcycles.length / paginationConfig.itemsPerPage);
-  const paginatedData = sortedMotorcycles.slice(
+  const calculatedTotalPages = Math.ceil(sortedMotorcycles.length / paginationConfig.itemsPerPage);
+  const calculatedPaginatedData = sortedMotorcycles.slice(
     (paginationConfig.currentPage - 1) * paginationConfig.itemsPerPage,
     paginationConfig.currentPage * paginationConfig.itemsPerPage
   );
+  
+  // Final values
+  const filteredMotorcycles = propFilteredMotorcycles || searchFilteredMotorcycles;
+  const paginatedData = propPaginatedData || calculatedPaginatedData;
+  const totalPages = propTotalPages || calculatedTotalPages;
+  const handleItemsPerPageChange = propHandleItemsPerPageChange || handleLocalItemsPerPageChange;
+  const handlePageChange = propHandlePageChange || handleLocalPageChange;
+  const getSortIcon = propGetSortIcon || localGetSortIcon;
+  const requestSort = propRequestSort || localRequestSort;
 
-  // Handle pagination change
-  const handlePageChange = (page: number) => {
-    setPaginationConfig({ ...paginationConfig, currentPage: page });
-  };
-
-  // Handle items per page change
-  const handleItemsPerPageChange = (itemsPerPage: number) => {
-    setPaginationConfig({
-      currentPage: 1,
-      itemsPerPage: itemsPerPage
-    });
-  };
-
-  // Handle sort
-  const requestSort = (key: string) => {
-    let direction: 'asc' | 'desc' = 'asc';
-    if (sortConfig.key === key && sortConfig.direction === 'asc') {
-      direction = 'desc';
+  // Fetch motorcycles from the API
+  const fetchMotorcycles = async () => {
+    setIsLoading(true);
+    try {
+      const response = await axios.get('/api/motorcycles');
+      if (propMotorcycles === undefined) {
+        setLocalMotorcycles(response.data);
+      }
+    } catch (error) {
+      console.error('Error fetching motorcycles:', error);
+    } finally {
+      setIsLoading(false);
     }
-    setSortConfig({ key, direction });
   };
 
-  // Get sort icon
-  const getSortIcon = (key: string) => {
-    if (sortConfig.key !== key) return '↕️';
-    return sortConfig.direction === 'asc' ? '↑' : '↓';
+  // Local handlers
+  const handleAddMotorcycle = async () => {
+    if (propHandleAddMotorcycle) {
+      propHandleAddMotorcycle();
+      return;
+    }
+    
+    if (!newMotorcycle.manufacturer) {
+      alert('Manufacturer is required');
+      return;
+    }
+
+    try {
+      if (selectedMotorcycle && selectedMotorcycle.id) {
+        // Update existing motorcycle
+        await axios.put(`/api/motorcycles/${selectedMotorcycle.id}`, newMotorcycle);
+      } else {
+        // Add new motorcycle
+        await axios.post('/api/motorcycles', newMotorcycle);
+      }
+      
+      // Reset form and refresh data
+      setNewMotorcycle({ manufacturer: '', model: '' });
+      setIsMotorcycleModalOpen(false);
+      setSelectedMotorcycle(null);
+      fetchMotorcycles();
+    } catch (error) {
+      console.error('Error saving motorcycle:', error);
+    }
+  };
+
+  const handleUpdateMotorcycle = async () => {
+    if (propHandleUpdateMotorcycle) {
+      propHandleUpdateMotorcycle();
+      return;
+    }
+    
+    handleAddMotorcycle();
+  };
+
+  const handleDeleteMotorcycle = async (id: number) => {
+    if (propHandleDeleteMotorcycle) {
+      propHandleDeleteMotorcycle(id);
+      return;
+    }
+    
+    if (window.confirm('Are you sure you want to delete this motorcycle?')) {
+      try {
+        await axios.delete(`/api/motorcycles/${id}`);
+        fetchMotorcycles();
+      } catch (error) {
+        console.error('Error deleting motorcycle:', error);
+      }
+    }
   };
 
   // Handle bulk selection
@@ -155,66 +298,20 @@ const MotorcyclesTab: React.FC<MotorcyclesTabProps> = ({
     }
   };
 
-  // Handle adding a new motorcycle
-  const handleAddMotorcycle = async () => {
-    if (!currentMotorcycle.manufacturer) {
-      alert('Manufacturer is required');
-      return;
-    }
-
-    try {
-      if (isEditing && currentMotorcycle.id) {
-        // Update existing motorcycle
-        await axios.put(`/api/motorcycles/${currentMotorcycle.id}`, currentMotorcycle);
-      } else {
-        // Add new motorcycle
-        await axios.post('/api/motorcycles', currentMotorcycle);
-      }
-      
-      // Reset form and refresh data
-      setCurrentMotorcycle({ manufacturer: '', model: '' });
-      setIsModalOpen(false);
-      setIsEditing(false);
-      fetchMotorcycles();
-    } catch (error) {
-      console.error('Error saving motorcycle:', error);
-    }
-  };
-
-  // Handle editing a motorcycle
-  const handleEditMotorcycle = (motorcycle: Motorcycle) => {
-    setCurrentMotorcycle(motorcycle);
-    setIsEditing(true);
-    setIsModalOpen(true);
-  };
-
-  // Handle deleting a motorcycle
-  const handleDeleteMotorcycle = async (id: number) => {
-    if (window.confirm('Are you sure you want to delete this motorcycle?')) {
-      try {
-        await axios.delete(`/api/motorcycles/${id}`);
-        fetchMotorcycles();
-      } catch (error) {
-        console.error('Error deleting motorcycle:', error);
-      }
-    }
-  };
-
   return (
     <div className="p-6">
       <header className="flex justify-between items-center mb-8">
         <h1 className="text-2xl font-bold">Motorcycles</h1>
         <div className="flex items-center gap-4">
           <MotorcycleViewToggle
-            viewMode={viewMode}
-            setViewMode={setViewMode}
+            viewMode={motorcycleViewMode}
+            setViewMode={setMotorcycleViewMode}
             isDarkMode={isDarkMode}
           />
           <button
             onClick={() => {
-              setCurrentMotorcycle({ manufacturer: '', model: '' });
-              setIsEditing(false);
-              setIsModalOpen(true);
+              setNewMotorcycle({ manufacturer: '', model: '' });
+              setIsMotorcycleModalOpen(true);
             }}
             className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
           >
@@ -224,6 +321,14 @@ const MotorcyclesTab: React.FC<MotorcyclesTabProps> = ({
       </header>
 
       <div className="mb-6">
+        {/* Alphabetical Filter */}
+        <AlphabeticalFilter
+          currentFilter={alphabeticalFilter}
+          setFilter={setAlphabeticalFilter}
+          isDarkMode={isDarkMode}
+          type="motorcycles"
+        />
+        
         <div className="flex flex-wrap gap-4 mb-4">
           <div className="flex-1">
             <input
@@ -258,7 +363,7 @@ const MotorcyclesTab: React.FC<MotorcyclesTabProps> = ({
               </button>
             )}
           </div>
-          {viewMode === 'card' && (
+          {motorcycleViewMode === 'card' && (
             <div className="flex items-center gap-2">
               <span className="text-sm">Sort by:</span>
               <select
@@ -302,10 +407,10 @@ const MotorcyclesTab: React.FC<MotorcyclesTabProps> = ({
       {isLoading ? (
         <div className="text-center py-8">Loading...</div>
       ) : (
-        viewMode === 'table' ? (
+        motorcycleViewMode === 'table' ? (
           <div className="w-full overflow-hidden">
             <div className={`rounded-lg shadow ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
-              <table className="min-w-full">
+              <table className="min-w-full divide-y divide-gray-200">
                 <thead className={isDarkMode ? 'bg-gray-700' : 'bg-gray-100'}>
                   <tr>
                     <th className="px-3 py-3 text-left text-xs font-medium w-8">
@@ -335,59 +440,57 @@ const MotorcyclesTab: React.FC<MotorcyclesTabProps> = ({
                         <span className="text-xs">{getSortIcon('model')}</span>
                       </button>
                     </th>
-                    <th className="px-6 py-3 text-right text-xs font-medium">Actions</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium">Products</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium">Actions</th>
                   </tr>
                 </thead>
-                <tbody className={`divide-y ${isDarkMode ? 'divide-gray-700' : 'divide-gray-200'}`}>
-                  {paginatedData.length === 0 ? (
-                    <tr>
-                      <td colSpan={5} className="px-6 py-4 text-center">No motorcycles found</td>
+                <tbody className="divide-y divide-gray-200">
+                  {paginatedData.map((motorcycle, index) => (
+                    <tr key={motorcycle.id} className={`border-t ${isDarkMode ? 'border-gray-700 hover:bg-gray-700/50' : 'border-gray-200 hover:bg-gray-50'}`}>
+                      <td className="px-3 py-4 text-center">
+                        <input
+                          type="checkbox"
+                          checked={selectedItems.includes(motorcycle.id)}
+                          onChange={() => toggleSelectItem(motorcycle.id)}
+                          className="rounded"
+                        />
+                      </td>
+                      <td className="px-6 py-4 text-sm">
+                        {((paginationConfig.currentPage - 1) * paginationConfig.itemsPerPage) + index + 1}
+                      </td>
+                      <td className="px-6 py-4 text-sm">
+                        {motorcycle.manufacturer}
+                      </td>
+                      <td className="px-6 py-4 text-sm">
+                        {motorcycle.model || '-'}
+                      </td>
+                      <td className="px-6 py-4 text-sm">
+                        {products?.filter(p => p.motorcycleId === motorcycle.id).length || 0}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-right">
+                        <button
+                          onClick={() => setSelectedMotorcycle(motorcycle)}
+                          className="text-blue-500 hover:text-blue-700 mr-4"
+                        >
+                          ✏️
+                        </button>
+                        <button
+                          onClick={() => handleDeleteMotorcycle(motorcycle.id)}
+                          className="text-red-500 hover:text-red-700"
+                        >
+                          🗑️
+                        </button>
+                      </td>
                     </tr>
-                  ) : (
-                    paginatedData.map((motorcycle, index) => (
-                      <tr key={motorcycle.id} className={isDarkMode ? 'hover:bg-gray-700/50' : 'hover:bg-gray-50'}>
-                        <td className="px-3 py-4 text-center">
-                          <input
-                            type="checkbox"
-                            checked={selectedItems.includes(motorcycle.id)}
-                            onChange={() => toggleSelectItem(motorcycle.id)}
-                            className="rounded"
-                          />
-                        </td>
-                        <td className="px-6 py-4 text-sm whitespace-nowrap">
-                          {((paginationConfig.currentPage - 1) * paginationConfig.itemsPerPage) + index + 1}
-                        </td>
-                        <td className={`px-6 py-4 whitespace-nowrap ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                          {motorcycle.manufacturer}
-                        </td>
-                        <td className={`px-6 py-4 whitespace-nowrap ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                          {motorcycle.model || ''}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-right">
-                          <button
-                            onClick={() => handleEditMotorcycle(motorcycle)}
-                            className="text-blue-500 hover:text-blue-700 mr-4"
-                          >
-                            ✏️
-                          </button>
-                          <button
-                            onClick={() => handleDeleteMotorcycle(motorcycle.id)}
-                            className="text-red-500 hover:text-red-700"
-                          >
-                            🗑️
-                          </button>
-                        </td>
-                      </tr>
-                    ))
-                  )}
+                  ))}
                 </tbody>
               </table>
             </div>
           </div>
         ) : (
-          <div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {selectedItems.length > 0 && (
-              <div className="mb-4 flex flex-wrap gap-2">
+              <div className="col-span-full mb-4 flex flex-wrap gap-2">
                 {paginatedData.map(motorcycle => (
                   <label key={motorcycle.id} className={`flex items-center p-2 rounded ${
                     isDarkMode ? 'bg-gray-700' : 'bg-gray-100'
@@ -403,83 +506,79 @@ const MotorcyclesTab: React.FC<MotorcyclesTabProps> = ({
                 ))}
               </div>
             )}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {paginatedData.map(motorcycle => (
-                <div key={motorcycle.id} className={`relative ${selectedItems.includes(motorcycle.id) ? 'ring-2 ring-blue-500' : ''}`}>
-                  {viewMode === 'card' && (
-                    <div className="absolute top-2 left-2 z-10">
-                      <input
-                        type="checkbox"
-                        checked={selectedItems.includes(motorcycle.id)}
-                        onChange={() => toggleSelectItem(motorcycle.id)}
-                        className="rounded"
-                      />
-                    </div>
-                  )}
-                  <MotorcycleCard
-                    motorcycle={motorcycle}
-                    onEdit={handleEditMotorcycle}
-                    onDelete={handleDeleteMotorcycle}
-                    isDarkMode={isDarkMode}
-                    productsCount={products.filter(p => p.motorcycleId === motorcycle.id).length}
-                  />
-                </div>
-              ))}
-            </div>
+            {paginatedData.map(motorcycle => (
+              <div key={motorcycle.id} className={`relative ${selectedItems.includes(motorcycle.id) ? 'ring-2 ring-blue-500' : ''}`}>
+                {motorcycleViewMode === 'card' && (
+                  <div className="absolute top-2 left-2 z-10">
+                    <input
+                      type="checkbox"
+                      checked={selectedItems.includes(motorcycle.id)}
+                      onChange={() => toggleSelectItem(motorcycle.id)}
+                      className="rounded"
+                    />
+                  </div>
+                )}
+                <MotorcycleCard
+                  motorcycle={motorcycle}
+                  onEdit={setSelectedMotorcycle}
+                  onDelete={handleDeleteMotorcycle}
+                  isDarkMode={isDarkMode}
+                  productsCount={products?.filter(p => p.motorcycleId === motorcycle.id).length || 0}
+                />
+              </div>
+            ))}
           </div>
         )
       )}
 
       {/* Motorcycle Modal */}
-      {isModalOpen && (
+      {isMotorcycleModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className={`rounded-lg p-6 w-11/12 max-w-md ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
-            <h2 className="text-xl font-bold mb-4">{isEditing ? 'Edit Motorcycle' : 'Add Motorcycle'}</h2>
+            <h2 className="text-xl font-bold mb-4">{selectedMotorcycle ? 'Edit Motorcycle' : 'Add Motorcycle'}</h2>
             
             <div className="mb-4">
               <label className="block mb-1 text-sm">Manufacturer:</label>
               <input
                 type="text"
-                value={currentMotorcycle.manufacturer || ''}
-                onChange={(e) => setCurrentMotorcycle({...currentMotorcycle, manufacturer: e.target.value})}
+                value={newMotorcycle.manufacturer || ''}
+                onChange={(e) => setNewMotorcycle({...newMotorcycle, manufacturer: e.target.value})}
                 className={`border rounded-lg p-2 w-full ${
                   isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'
                 }`}
-                placeholder="e.g., Honda"
               />
             </div>
             
             <div className="mb-6">
-              <label className="block mb-1 text-sm">Model (optional):</label>
+              <label className="block mb-1 text-sm">Model:</label>
               <input
                 type="text"
-                value={currentMotorcycle.model || ''}
-                onChange={(e) => setCurrentMotorcycle({...currentMotorcycle, model: e.target.value || null})}
+                value={newMotorcycle.model || ''}
+                onChange={(e) => setNewMotorcycle({...newMotorcycle, model: e.target.value || null})}
                 className={`border rounded-lg p-2 w-full ${
                   isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'
                 }`}
-                placeholder="e.g., Supra"
               />
             </div>
             
             <div className="flex justify-end gap-2">
               <button
                 onClick={() => {
-                  setIsModalOpen(false);
-                  setCurrentMotorcycle({ manufacturer: '', model: '' });
-                  setIsEditing(false);
+                  setIsMotorcycleModalOpen(false);
+                  setNewMotorcycle({ manufacturer: '', model: '' });
+                  setSelectedMotorcycle(null);
                 }}
                 className={`px-4 py-2 rounded-lg ${
-                  isDarkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-200 hover:bg-gray-300'
+                  isDarkMode ? 'bg-gray-600 hover:bg-gray-700' : 'bg-gray-200 hover:bg-gray-300'
                 }`}
               >
                 Cancel
               </button>
               <button
-                onClick={handleAddMotorcycle}
+                onClick={selectedMotorcycle ? handleUpdateMotorcycle : handleAddMotorcycle}
                 className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
               >
-                {isEditing ? 'Update' : 'Add'}
+                {selectedMotorcycle ? 'Update' : 'Add'}
               </button>
             </div>
           </div>
