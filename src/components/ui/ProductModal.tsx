@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { Product, Category, Brand } from '../../hooks/useApi';
-import { Motorcycle } from '../../features/products/types';
 import axios from 'axios';
+import { Motorcycle, Product } from '../../features/products/types';
+import { Category } from '../../features/categories/types';
+import { Brand } from '../../features/brands/types';
 
 interface ProductModalProps {
   isOpen: boolean;
@@ -36,6 +37,7 @@ const ProductModal: React.FC<ProductModalProps> = ({
   const [compatibleMotorcycles, setCompatibleMotorcycles] = useState<Motorcycle[]>([]);
   const [selectedCompatibilityIds, setSelectedCompatibilityIds] = useState<number[]>([]);
   const [isLoadingCompatibility, setIsLoadingCompatibility] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Fetch motorcycles on component mount
   useEffect(() => {
@@ -388,9 +390,32 @@ const ProductModal: React.FC<ProductModalProps> = ({
             <h3 className="text-lg font-semibold mb-2">Compatible Motorcycle Models</h3>
             <p className="text-sm mb-4">Select all motorcycle models that are compatible with this product</p>
             
+            <div className="mb-4">
+              <input
+                type="text"
+                placeholder="Search motorcycles..."
+                className={`w-full px-4 py-2 rounded-lg border ${
+                  isDarkMode 
+                    ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' 
+                    : 'bg-white border-gray-300'
+                }`}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
+            
             <div className="max-h-72 overflow-y-auto pr-2">
-              {Object.entries(groupedMotorcycles).map(([type, typedMotorcycles]) => (
-                typedMotorcycles.length > 0 && (
+              {Object.entries(groupedMotorcycles).map(([type, typedMotorcycles]) => {
+                const filteredTypedMotorcycles = typedMotorcycles.filter(motorcycle => {
+                  if (!searchQuery) return true;
+                  const searchLower = searchQuery.toLowerCase();
+                  return (
+                    motorcycle.manufacturer.toLowerCase().includes(searchLower) ||
+                    (motorcycle.model && motorcycle.model.toLowerCase().includes(searchLower))
+                  );
+                });
+
+                return filteredTypedMotorcycles.length > 0 && (
                   <div key={type} className="mb-4">
                     <div className={`p-2 ${isDarkMode ? 'bg-gray-700' : 'bg-gray-100'} rounded flex justify-between items-center sticky top-0 z-10`}>
                       <span className="font-semibold">{type}</span>
@@ -413,7 +438,7 @@ const ProductModal: React.FC<ProductModalProps> = ({
                     </div>
                   
                     <div className="grid grid-cols-2 gap-2 mt-2">
-                      {typedMotorcycles.map(motorcycle => (
+                      {filteredTypedMotorcycles.map(motorcycle => (
                         <div
                           key={motorcycle.id}
                           className={`p-2 rounded cursor-pointer border ${
@@ -443,8 +468,8 @@ const ProductModal: React.FC<ProductModalProps> = ({
                       ))}
                     </div>
                   </div>
-                )
-              ))}
+                );
+              })}
             </div>
           </div>
         )}

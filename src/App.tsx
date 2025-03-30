@@ -121,7 +121,7 @@ const AppContent: FC = () => {
   const [motorcycleAlphabeticalFilter, setMotorcycleAlphabeticalFilter] = useState<string | null>(null);
 
   // Add new state for category filter
-  const [categoryFilter, setCategoryFilter] = useState<number | null>(null);
+  const [categoryFilter, setCategoryFilter] = useState<number[]>([]);
 
   // Add new state for category view mode
   const [categoryViewMode, setCategoryViewMode] = useState<'table' | 'card'>('table');
@@ -301,11 +301,20 @@ const AppContent: FC = () => {
     }
   };
 
-  // Filter products by category filter
+  // Filter products by category filter and search query
   const filteredProducts = products.filter((product: Product) => {
-    // Apply category filter
-    const matchesCategory = categoryFilter === null || product.categoryId === categoryFilter;
-    return matchesCategory;
+    // Apply category filter (multi-select)
+    const matchesCategory = categoryFilter.length === 0 || 
+      (product.categoryId !== null && categoryFilter.includes(product.categoryId));
+    
+    // Apply search filter to multiple fields
+    const matchesSearch = !searchQuery || 
+      product.tipeSize?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      product.Category?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      product.Brand?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (product.note && product.note.toLowerCase().includes(searchQuery.toLowerCase()));
+    
+    return matchesCategory && matchesSearch;
   });
 
   // Filter categories by both search and alphabetical filter

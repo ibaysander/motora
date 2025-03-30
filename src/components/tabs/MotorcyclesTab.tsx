@@ -233,12 +233,26 @@ const MotorcyclesTab: React.FC<MotorcyclesTabProps> = ({
   };
 
   const handleUpdateMotorcycle = async () => {
-    if (propHandleUpdateMotorcycle) {
-      propHandleUpdateMotorcycle();
+    if (!selectedMotorcycle || !newMotorcycle.manufacturer) {
+      alert('Manufacturer is required');
       return;
     }
-    
-    handleAddMotorcycle();
+
+    try {
+      await axios.put(`/api/motorcycles/${selectedMotorcycle.id}`, {
+        manufacturer: newMotorcycle.manufacturer,
+        model: newMotorcycle.model
+      });
+      
+      // Reset form and refresh data
+      setNewMotorcycle({ manufacturer: '', model: '' });
+      setIsMotorcycleModalOpen(false);
+      setSelectedMotorcycle(null);
+      fetchMotorcycles();
+    } catch (error) {
+      console.error('Error updating motorcycle:', error);
+      alert('Failed to update motorcycle');
+    }
   };
 
   const handleDeleteMotorcycle = async (id: number) => {
@@ -469,7 +483,14 @@ const MotorcyclesTab: React.FC<MotorcyclesTabProps> = ({
                       </td>
                       <td className="px-6 py-4 text-sm text-right">
                         <button
-                          onClick={() => setSelectedMotorcycle(motorcycle)}
+                          onClick={() => {
+                            setSelectedMotorcycle(motorcycle);
+                            setNewMotorcycle({
+                              manufacturer: motorcycle.manufacturer,
+                              model: motorcycle.model || ''
+                            });
+                            setIsMotorcycleModalOpen(true);
+                          }}
                           className="text-blue-500 hover:text-blue-700 mr-4"
                         >
                           ✏️
@@ -520,7 +541,14 @@ const MotorcyclesTab: React.FC<MotorcyclesTabProps> = ({
                 )}
                 <MotorcycleCard
                   motorcycle={motorcycle}
-                  onEdit={setSelectedMotorcycle}
+                  onEdit={(motorcycle) => {
+                    setSelectedMotorcycle(motorcycle);
+                    setNewMotorcycle({
+                      manufacturer: motorcycle.manufacturer,
+                      model: motorcycle.model || ''
+                    });
+                    setIsMotorcycleModalOpen(true);
+                  }}
                   onDelete={handleDeleteMotorcycle}
                   isDarkMode={isDarkMode}
                   productsCount={products?.filter(p => p.motorcycleId === motorcycle.id).length || 0}

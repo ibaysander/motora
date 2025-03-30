@@ -16,8 +16,8 @@ interface ProductsTabProps {
   isDarkMode: boolean;
   searchQuery: string;
   setSearchQuery: (query: string) => void;
-  categoryFilter: number | null;
-  setCategoryFilter: (categoryId: number | null) => void;
+  categoryFilter: number[];
+  setCategoryFilter: (categoryIds: number[]) => void;
   viewMode: 'table' | 'card';
   setViewMode: (mode: 'table' | 'card') => void;
   paginationConfig: PaginationConfig;
