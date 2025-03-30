@@ -1,6 +1,30 @@
 // @ts-ignore
 import { useState, useCallback, useEffect } from 'react';
 
+/**
+ * PAGINATION APPROACH: CLIENT-SIDE VS SERVER-SIDE
+ * -------------------------------------------------
+ * This application uses client-side pagination rather than server-side pagination.
+ * 
+ * Why client-side pagination?
+ * - Better user experience: Once data is loaded, page transitions are instant
+ * - Simpler implementation: Doesn't require complex API endpoints with offset/limit/search parameters
+ * - Works offline: After initial data load, users can browse all pages without network requests
+ * - Enhanced sorting and filtering: Can apply complex filters and sorts without additional server requests
+ * 
+ * When to consider switching to server-side pagination:
+ * - Dataset grows beyond several thousand records
+ * - Initial load time becomes unacceptably slow
+ * - Memory usage in browser becomes problematic
+ * - Need to support browsing extremely large datasets
+ * 
+ * To implement server-side pagination, you would:
+ * 1. Update API endpoints to accept query parameters: ?search=term&offset=0&limit=10
+ * 2. Modify database queries to use LIMIT and OFFSET clauses
+ * 3. Return pagination metadata (total count, pages) in API responses
+ * 4. Update this hook to fetch data when pagination parameters change
+ */
+
 export interface SortConfig {
   key: string;
   direction: 'asc' | 'desc';
