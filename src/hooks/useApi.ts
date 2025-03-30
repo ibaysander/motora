@@ -1,8 +1,8 @@
 import { useState, useCallback, useEffect } from 'react';
 import { apis } from '../services/api';
-import { Product, Category, Brand, ProductRequest, CategoryRequest, BrandRequest } from '../services/api/types';
+import { Product, Category, Brand, ProductRequest, CategoryRequest, BrandRequest, Motorcycle } from '../services/api/types';
 
-export type { Product, Category, Brand, ProductRequest, CategoryRequest, BrandRequest };
+export type { Product, Category, Brand, ProductRequest, CategoryRequest, BrandRequest, Motorcycle };
 
 // Type for product without ID
 export type NewProduct = Omit<Product, 'id' | 'Category' | 'Brand' | 'sales'>;

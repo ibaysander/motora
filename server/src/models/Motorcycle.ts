@@ -5,6 +5,7 @@ class Motorcycle extends Model {
   public id!: number;
   public manufacturer!: string;
   public model!: string | null;
+  public type!: 'Matic' | 'Manual' | null;
 }
 
 Motorcycle.init(
@@ -20,6 +21,10 @@ Motorcycle.init(
     },
     model: {
       type: DataTypes.STRING,
+      allowNull: true,
+    },
+    type: {
+      type: DataTypes.ENUM('Matic', 'Manual'),
       allowNull: true,
     }
   },

@@ -11,11 +11,13 @@ export namespace ApiTypes {
     id: number;
     manufacturer: string;
     model: string | null;
+    type: 'Matic' | 'Manual' | null;
   }
 
   export interface MotorcycleRequest {
     manufacturer: string;
     model: string | null;
+    type: 'Matic' | 'Manual' | null;
   }
 
   export interface MotorcycleResponse extends ApiResponse<Motorcycle> {}
@@ -48,7 +50,6 @@ export namespace ApiTypes {
   export interface ProductRequest {
     categoryId: number | null;
     brandId: number | null;
-    motorcycleId: number | null;
     tipeSize: string | null;
     currentStock: number;
     minThreshold: number;

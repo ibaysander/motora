@@ -2,6 +2,7 @@ export interface Motorcycle {
   id: number;
   manufacturer: string;
   model: string | null;
+  type: 'Matic' | 'Manual' | null;
 }
 
 export interface Product {
@@ -18,6 +19,7 @@ export interface Product {
     name: string;
   } | null;
   Motorcycle?: Motorcycle | null;
+  compatibleMotorcycles?: Motorcycle[];
   tipeSize: string | null;
   currentStock: number;
   minThreshold: number;

@@ -1,5 +1,5 @@
-import React, { ChangeEvent } from 'react';
-import { Product, Category, Brand } from '../../hooks/useApi';
+import React, { ChangeEvent, useState, useEffect } from 'react';
+import { Product, Category, Brand, Motorcycle } from '../../hooks/useApi';
 import { SortConfig, PaginationConfig, ProductCard, ProductList } from '../../features/products';
 import Dashboard from '../ui/Dashboard';
 import ImportExportButtons from '../ui/ImportExportButtons';
@@ -7,6 +7,7 @@ import { ViewToggle } from '../ui/ViewToggles';
 import { PaginationLimitSelector, PaginationButtons } from '../ui/Pagination';
 import ProductModal from '../ui/ProductModal';
 import { CategoryFilter } from '../ui/Filters';
+import axios from 'axios';
 
 interface ProductsTabProps {
   products: Product[];
@@ -85,6 +86,34 @@ const ProductsTab: React.FC<ProductsTabProps> = ({
   setIsDarkMode,
   itemsPerPageOptions
 }) => {
+  const [productCompatibility, setProductCompatibility] = useState<{[key: number]: Motorcycle[]}>({});
+  
+  // Fetch product compatibility data
+  useEffect(() => {
+    const fetchCompatibility = async () => {
+      try {
+        const productIds = paginatedData.map(product => product.id);
+        const response = await axios.get('/api/product-compatibilities', {
+          params: { productIds: productIds.join(',') }
+        });
+        setProductCompatibility(response.data || {});
+      } catch (error) {
+        console.error('Error fetching compatibility data:', error);
+        // Create an empty compatibility map object to avoid UI errors
+        const emptyCompatibilityMap = paginatedData.reduce((acc, product) => {
+          acc[product.id] = [];
+          return acc;
+        }, {} as { [key: number]: Motorcycle[] });
+        
+        setProductCompatibility(emptyCompatibilityMap);
+      }
+    };
+    
+    if (paginatedData.length > 0) {
+      fetchCompatibility();
+    }
+  }, [paginatedData]);
+
   return (
     <div className="p-6">
       <header className="flex justify-between items-center mb-8">
@@ -245,6 +274,7 @@ const ProductsTab: React.FC<ProductsTabProps> = ({
                 }}
                 onDelete={handleDeleteProduct}
                 isDarkMode={isDarkMode}
+                compatibleMotorcycles={productCompatibility[product.id] || []}
               />
             ))}
           </div>

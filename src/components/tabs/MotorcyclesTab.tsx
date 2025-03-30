@@ -361,7 +361,7 @@ const MotorcyclesTab: React.FC<MotorcyclesTabProps> = ({
                           {motorcycle.manufacturer}
                         </td>
                         <td className={`px-6 py-4 whitespace-nowrap ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                          {motorcycle.model || '-'}
+                          {motorcycle.model || ''}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-right">
                           <button

@@ -24,7 +24,7 @@ const MotorcycleCard: React.FC<MotorcycleCardProps> = ({ motorcycle, onEdit, onD
             {motorcycle.manufacturer}
           </h3>
           <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-            Model: {motorcycle.model || '-'}
+            Model: {motorcycle.model || ''}
           </p>
           <p className={`text-sm mt-2 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
             {productsCount} Products
