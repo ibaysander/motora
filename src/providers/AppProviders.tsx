@@ -1,7 +1,9 @@
 // @ts-ignore
 import React, { FC, ReactNode } from 'react';
+import { Provider } from 'react-redux';
 import { LayoutProvider } from '../contexts/LayoutContext';
 import { NotificationProvider } from '../contexts/NotificationContext';
+import store from '../store';
 
 interface AppProvidersProps {
   children: ReactNode;
@@ -12,11 +14,13 @@ interface AppProvidersProps {
  */
 const AppProviders: FC<AppProvidersProps> = ({ children }) => {
   return (
-    <LayoutProvider>
-      <NotificationProvider>
-        {children}
-      </NotificationProvider>
-    </LayoutProvider>
+    <Provider store={store}>
+      <LayoutProvider>
+        <NotificationProvider>
+          {children}
+        </NotificationProvider>
+      </LayoutProvider>
+    </Provider>
   );
 };
 

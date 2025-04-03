@@ -2,8 +2,8 @@
 import React from 'react';
 
 export interface SidebarProps {
-  currentTab: 'products' | 'categories' | 'brands' | 'motorcycles';
-  setCurrentTab: (tab: 'products' | 'categories' | 'brands' | 'motorcycles') => void;
+  currentTab: 'products' | 'categories' | 'brands' | 'motorcycles' | 'transactions';
+  setCurrentTab: (tab: 'products' | 'categories' | 'brands' | 'motorcycles' | 'transactions') => void;
   isDarkMode: boolean;
   onLogout: () => void;
   isExpanded: boolean;
@@ -11,7 +11,7 @@ export interface SidebarProps {
 }
 
 interface Tab {
-  id: 'products' | 'categories' | 'brands' | 'motorcycles';
+  id: 'products' | 'categories' | 'brands' | 'motorcycles' | 'transactions';
   icon: string;
   label: string;
 }
@@ -20,7 +20,8 @@ const tabs: Tab[] = [
   { id: 'products', icon: '📦', label: 'Products' },
   { id: 'categories', icon: '📁', label: 'Categories' },
   { id: 'brands', icon: '🏢', label: 'Brands' },
-  { id: 'motorcycles', icon: '🏍️', label: 'Motorcycles' }
+  { id: 'motorcycles', icon: '🏍️', label: 'Motorcycles' },
+  { id: 'transactions', icon: '💰', label: 'Transactions' }
 ];
 
 const Sidebar: React.FC<SidebarProps> = ({ 

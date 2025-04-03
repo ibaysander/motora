@@ -2,9 +2,9 @@ import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 
 export type ViewMode = 'table' | 'card';
 export type TabType = 'products' | 'categories' | 'brands' | 'motorcycles' | 'transactions';
-export type NotificationType = 'success' | 'error' | 'info' | 'warning';
+export type NotificationType = 'success' | 'error';
 
-interface Notification {
+export interface NotificationState {
   message: string;
   type: NotificationType;
   show: boolean;
@@ -30,7 +30,7 @@ interface UIState {
   searchQuery: string;
   alphabeticalFilter: string | null;
   categoryFilter: number | null;
-  notification: Notification;
+  notification: NotificationState;
   modals: ModalState;
 }
 
@@ -48,7 +48,7 @@ const initialState: UIState = {
   categoryFilter: null,
   notification: {
     message: '',
-    type: 'info',
+    type: 'success',
     show: false,
   },
   modals: {

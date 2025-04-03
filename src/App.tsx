@@ -18,6 +18,7 @@ import ProductsTab from './components/tabs/ProductsTab';
 import CategoriesTab from './components/tabs/CategoriesTab';
 import BrandsTab from './components/tabs/BrandsTab';
 import MotorcyclesTab from './components/tabs/MotorcyclesTab';
+import TransactionsTab from './components/tabs/TransactionsTab';
 import { useLayout } from './contexts/LayoutContext';
 import { useNotificationContext } from './contexts/NotificationContext';
 import AppProviders from './providers/AppProviders';
@@ -488,6 +489,13 @@ const AppContent: FC = () => {
             products={products}
             alphabeticalFilter={motorcycleAlphabeticalFilter}
             setAlphabeticalFilter={setMotorcycleAlphabeticalFilter}
+          />
+        );
+
+      case 'transactions':
+        return (
+          <TransactionsTab
+            isDarkMode={isDarkMode}
           />
         );
 

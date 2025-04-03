@@ -6,6 +6,7 @@ import { useAppSelector, useAppDispatch } from '../../store';
 import api from '../../utils/api';
 import { showNotification } from '../../store/slices/uiSlice';
 import { fetchProducts } from '../../store/slices/productsSlice';
+import { fetchTransactions, deleteTransaction, invalidateTransactions } from '../../store/slices/transactionsSlice';
 import TransactionModal from '../ui/TransactionModal';
 
 interface TransactionsTabProps {
@@ -13,8 +14,6 @@ interface TransactionsTabProps {
 }
 
 const TransactionsTab: FC<TransactionsTabProps> = ({ isDarkMode }) => {
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
   const [sortConfig, setSortConfig] = useState<SortConfig>({ key: 'date', direction: 'desc' });
   const [paginationConfig, setPaginationConfig] = useState<PaginationConfig>({ currentPage: 1, itemsPerPage: 10 });
   const [searchQuery, setSearchQuery] = useState('');
@@ -24,25 +23,34 @@ const TransactionsTab: FC<TransactionsTabProps> = ({ isDarkMode }) => {
   const [isViewModalOpen, setIsViewModalOpen] = useState<boolean>(false);
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
   
+  // Get data from Redux store
   const dispatch = useAppDispatch();
   const products = useAppSelector(state => state.products.productsList);
+  const { items: transactions, loading } = useAppSelector(state => state.transactions);
   
-  // Fetch transactions on component mount
+  // Fetch transactions and products on component mount
   useEffect(() => {
-    fetchTransactions();
-    dispatch(fetchProducts()); // Explicitly fetch products
-    console.log('Dispatched fetchProducts action');
-  }, []);
+    dispatch(fetchTransactions());
+    dispatch(fetchProducts());
+    console.log('Dispatched fetchTransactions and fetchProducts actions');
+  }, [dispatch]);
+  
+  // Add a useEffect to log transactions when they change
+  useEffect(() => {
+    console.log('Transactions from Redux store:', transactions);
+    console.log('Transactions count:', transactions?.length || 0);
+  }, [transactions]);
+  
+  // If date range changes, invalidate transactions and fetch again
+  useEffect(() => {
+    if (startDate && endDate) {
+      dispatch(invalidateTransactions());
+      fetchFilteredTransactions();
+    }
+  }, [startDate, endDate, dispatch]);
 
-  // Add a useEffect to log products when they change
-  useEffect(() => {
-    console.log('Products in TransactionsTab:', products);
-    console.log('Products count:', products?.length || 0);
-  }, [products]);
-  
-  // Fetch transactions from API
-  const fetchTransactions = async () => {
-    setLoading(true);
+  // Fetch transactions with date filter
+  const fetchFilteredTransactions = async () => {
     try {
       let url = '/transactions';
       
@@ -52,32 +60,26 @@ const TransactionsTab: FC<TransactionsTabProps> = ({ isDarkMode }) => {
       }
       
       const response = await api.get(url);
-      setTransactions(response.data);
+      // Update redux state (we don't call setTransactions directly anymore)
+      dispatch({ type: 'transactions/fetchTransactions/fulfilled', payload: response.data });
     } catch (error) {
       console.error('Error fetching transactions:', error);
       dispatch(showNotification({ 
         message: 'Failed to load transactions', 
         type: 'error'
       }));
-    } finally {
-      setLoading(false);
     }
   };
-  
-  // Apply filters when date range changes
-  useEffect(() => {
-    if (startDate && endDate) {
-      fetchTransactions();
-    }
-  }, [startDate, endDate]);
   
   // Filter transactions based on search query
   const filteredTransactions = transactions.filter(transaction => {
     // Search filter
     return searchQuery === '' || 
-      transaction.customer_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (transaction.customer_name?.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (transaction.customer?.toLowerCase().includes(searchQuery.toLowerCase())) ||
       transaction.id.toString().includes(searchQuery) ||
-      transaction.payment_method.toLowerCase().includes(searchQuery.toLowerCase());
+      (transaction.payment_method?.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (transaction.paymentMethod?.toLowerCase().includes(searchQuery.toLowerCase()));
   });
   
   // Sort transactions
@@ -89,9 +91,11 @@ const TransactionsTab: FC<TransactionsTabProps> = ({ isDarkMode }) => {
     }
     
     if (sortConfig.key === 'total_amount') {
+      const aAmount = a.total_amount || a.totalAmount || 0;
+      const bAmount = b.total_amount || b.totalAmount || 0;
       return sortConfig.direction === 'asc' 
-        ? a.total_amount - b.total_amount 
-        : b.total_amount - a.total_amount;
+        ? aAmount - bAmount 
+        : bAmount - aAmount;
     }
 
     // Safely compare values that might be undefined
@@ -208,13 +212,21 @@ const TransactionsTab: FC<TransactionsTabProps> = ({ isDarkMode }) => {
 
   // Add new transaction
   const handleAddTransaction = () => {
-    console.log('Opening add transaction modal');
+    console.log('Opening add transaction modal - previous state:', isAddModalOpen);
     setIsAddModalOpen(true);
+    console.log('Set isAddModalOpen to true');
+    
+    // Force a re-render with a timeout
+    setTimeout(() => {
+      console.log('Modal should be open now, isAddModalOpen:', isAddModalOpen);
+    }, 100);
   };
 
   // Handle transaction success
   const handleTransactionSuccess = () => {
-    fetchTransactions();
+    // Invalidate transactions to force a refresh
+    dispatch(invalidateTransactions());
+    dispatch(fetchTransactions());
     dispatch(fetchProducts()); // Refresh product stock
   };
 
@@ -225,15 +237,13 @@ const TransactionsTab: FC<TransactionsTabProps> = ({ isDarkMode }) => {
     }
     
     try {
-      await api.delete(`/transactions/${id}`);
+      // Use the Redux action instead of direct API call
+      await dispatch(deleteTransaction(id)).unwrap();
       
       dispatch(showNotification({ 
         message: 'Transaction deleted successfully', 
         type: 'success'
       }));
-      
-      // Refresh transactions
-      fetchTransactions();
       
       // Refresh products to update stock
       dispatch(fetchProducts());
@@ -243,6 +253,19 @@ const TransactionsTab: FC<TransactionsTabProps> = ({ isDarkMode }) => {
         message: 'Failed to delete transaction', 
         type: 'error'
       }));
+    }
+  };
+  
+  // View transaction details
+  const handleViewTransaction = (transaction: Transaction) => {
+    setSelectedTransaction(transaction);
+    setIsViewModalOpen(true);
+  };
+  
+  // Apply filters when date range changes
+  const applyFilters = () => {
+    if (startDate && endDate) {
+      fetchFilteredTransactions();
     }
   };
   
@@ -351,46 +374,77 @@ const TransactionsTab: FC<TransactionsTabProps> = ({ isDarkMode }) => {
               </tr>
             </thead>
             <tbody>
-              {paginatedTransactions.length > 0 ? (
-                paginatedTransactions.map((transaction, index) => (
-                  <tr 
-                    key={transaction.id}
-                    className={`border-t ${
-                      isDarkMode 
-                        ? 'border-gray-700 hover:bg-gray-700/50' 
-                        : 'border-gray-200 hover:bg-gray-50'
-                    }`}
-                  >
-                    <td className="px-3 py-3 text-xs whitespace-nowrap">{transaction.id}</td>
-                    <td className="px-3 py-3 text-xs whitespace-nowrap">
-                      {formatDate(transaction.date)}
-                    </td>
-                    <td className="px-3 py-3 text-xs whitespace-nowrap">
-                      <span className={getTransactionTypeColor(transaction.type)}>
-                        {transaction.type}
-                      </span>
-                    </td>
-                    <td className="px-3 py-3 text-xs whitespace-nowrap">
-                      {formatCurrency(transaction.total_amount)}
-                    </td>
-                    <td className="px-3 py-3 text-xs whitespace-nowrap">{transaction.payment_method}</td>
-                    <td className="px-3 py-3 text-xs whitespace-nowrap">{transaction.customer_name || '-'}</td>
-                    <td className="px-3 py-3 text-xs whitespace-nowrap">
-                      <button
-                        onClick={() => handleGenerateReceipt(transaction.id)}
-                        className="text-blue-500 hover:text-blue-600 mr-2"
-                      >
-                        📃
-                      </button>
-                      <button
-                        onClick={() => handleDeleteTransaction(transaction.id)}
-                        className="text-red-500 hover:text-red-600"
-                      >
-                        🗑
-                      </button>
-                    </td>
-                  </tr>
-                ))
+              {loading ? (
+                <tr>
+                  <td colSpan={7} className="px-3 py-8 text-center">
+                    Loading transactions...
+                  </td>
+                </tr>
+              ) : paginatedTransactions.length > 0 ? (
+                paginatedTransactions.map((transaction, index) => {
+                  console.log('Transaction data:', transaction);
+                  return (
+                    <tr 
+                      key={transaction.id}
+                      className={`border-t ${
+                        isDarkMode 
+                          ? 'border-gray-700 hover:bg-gray-700/50' 
+                          : 'border-gray-200 hover:bg-gray-50'
+                      }`}
+                    >
+                      <td className="px-3 py-3 text-xs whitespace-nowrap">{transaction.id}</td>
+                      <td className="px-3 py-3 text-xs whitespace-nowrap">
+                        {formatDate(transaction.date)}
+                      </td>
+                      <td className="px-3 py-3 text-xs whitespace-nowrap">
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getTransactionTypeColor(transaction.type)}`}>
+                          {transaction.type}
+                        </span>
+                      </td>
+                      <td className="px-3 py-3 text-xs whitespace-nowrap text-right">
+                        {(() => {
+                          // Try to get a number from either field
+                          const amount = transaction.total_amount || transaction.totalAmount; 
+                          
+                          // Ensure it's a valid number
+                          if (amount === undefined || amount === null || isNaN(Number(amount))) {
+                            return 'Rp0';
+                          }
+                          
+                          // Format the number as currency
+                          return new Intl.NumberFormat('id-ID', {
+                            style: 'currency',
+                            currency: 'IDR',
+                            minimumFractionDigits: 0,
+                            maximumFractionDigits: 0
+                          }).format(Number(amount));
+                        })()}
+                      </td>
+                      <td className="px-3 py-3 text-xs whitespace-nowrap">
+                        {transaction.payment_method || transaction.paymentMethod || '-'}
+                      </td>
+                      <td className="px-3 py-3 text-xs whitespace-nowrap">
+                        {transaction.customer_name || transaction.customer || '-'}
+                      </td>
+                      <td className="px-3 py-3 text-xs whitespace-nowrap">
+                        <button
+                          onClick={() => handleViewTransaction(transaction)}
+                          className="text-blue-500 hover:text-blue-600 mr-2"
+                          title="View Details"
+                        >
+                          📃
+                        </button>
+                        <button
+                          onClick={() => handleDeleteTransaction(transaction.id)}
+                          className="text-red-500 hover:text-red-600"
+                          title="Delete"
+                        >
+                          🗑
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })
               ) : (
                 <tr>
                   <td 

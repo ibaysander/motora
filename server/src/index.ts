@@ -5,6 +5,7 @@ import productRoutes from './routes/products';
 import categoryRoutes from './routes/categories';
 import brandRoutes from './routes/brands';
 import motorcycleRoutes from './routes/motorcycles';
+import transactionRoutes from './routes/transactions';
 import multer from 'multer';
 import xlsx from 'xlsx';
 import { Product, Category, Brand, Motorcycle } from './models';
@@ -74,6 +75,7 @@ app.use('/api', categoryRoutes);
 app.use('/api', brandRoutes);
 app.use('/api', motorcycleRoutes);
 app.use('/api', productCompatibilityRoutes);
+app.use('/api', transactionRoutes);
 
 // Import Excel endpoint
 app.post('/api/import-excel', upload.single('file'), async (req, res) => {
